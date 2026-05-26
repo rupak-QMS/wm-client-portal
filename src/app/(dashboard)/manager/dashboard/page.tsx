@@ -33,46 +33,35 @@ export default async function ManagerDashboard() {
       }),
     ]);
 
+  const serializedLogs = recentLogs.map(log => ({
+    ...log,
+    created_at: log.created_at.toISOString(),
+  }));
+
+  const serializedReports = recentReports.map(r => ({
+    ...r,
+    created_at: r.created_at.toISOString(),
+    updated_at: r.updated_at.toISOString(),
+    file_size:  r.file_size ? Number(r.file_size) : null,
+  }));
+
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold">Manager Dashboard</h1>
-        <p className="text-muted-foreground text-sm">
-          Overview of all portal activity
-        </p>
+        <p className="text-muted-foreground text-sm">Overview of all portal activity</p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        <StatsCard
-          title="Total Clients"
-          value={clientCount}
-          icon={Users}
-          color="blue"
-        />
-        <StatsCard
-          title="Account Managers"
-          value={amCount}
-          icon={UserCheck}
-          color="green"
-        />
-        <StatsCard
-          title="Pending Approvals"
-          value={pendingApprovals}
-          icon={ClipboardCheck}
-          color="amber"
-          trend={pendingApprovals > 0 ? 'up' : undefined}
-        />
-        <StatsCard
-          title="Total Reports"
-          value={reportCount}
-          icon={FileText}
-          color="purple"
-        />
+        <StatsCard title="Total Clients"     value={clientCount}      icon={Users}         color="blue" />
+        <StatsCard title="Account Managers"  value={amCount}          icon={UserCheck}     color="green" />
+        <StatsCard title="Pending Approvals" value={pendingApprovals} icon={ClipboardCheck} color="amber" trend={pendingApprovals > 0 ? 'up' : undefined} />
+        <StatsCard title="Total Reports"     value={reportCount}      icon={FileText}      color="purple" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <ActivityFeed  logs={recentLogs} />
-        <RecentUploads reports={recentReports} />
+        <ActivityFeed  logs={serializedLogs} />
+        <RecentUploads reports={serializedReports} />
       </div>
     </div>
   );
