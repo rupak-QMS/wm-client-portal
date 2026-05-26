@@ -1,0 +1,183 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum UserRole {
+  manager
+  account_manager
+  client
+  @@map("user_role")
+}
+
+enum ClientStatus {
+  active
+  inactive
+  suspended
+  @@map("client_status")
+}
+
+enum ReportType {
+  seo
+  website_update
+  analytics
+  audit
+  other
+  @@map("report_type")
+}
+
+enum RequestStatus {
+  pending
+  approved
+  rejected
+  @@map("request_status")
+}
+
+model User {
+  id         String    @id @db.Uuid
+  full_name  String
+  email      String    @unique
+  role       UserRole  @default(client)
+  avatar_url String?
+  created_at DateTime  @default(now()) @db.Timestamptz
+  updated_at DateTime  @updatedAt @db.Timestamptz
+
+  clientsCreated         Client[]        @relation("ClientCreatedBy")
+  clientsManaged         Client[]        @relation("ClientAssignedManager")
+  reportsUploaded        Report[]
+  comments               Comment[]
+  messagesSent           Message[]       @relation("MessageSender")
+  messagesReceived       Message[]       @relation("MessageReceiver")
+  deleteRequestsMade     DeleteRequest[] @relation("DeleteRequestRequester")
+  deleteRequestsApproved DeleteRequest[] @relation("DeleteRequestApprover")
+  notifications          Notification[]
+  activityLogs           ActivityLog[]
+
+  @@map("users")
+}
+
+model Client {
+  id                       String       @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  company_name             String
+  contact_person           String
+  email                    String
+  phone                    String?
+  website                  String?
+  assigned_account_manager String?      @db.Uuid
+  created_by               String       @db.Uuid
+  status                   ClientStatus @default(active)
+  notes                    String?
+  created_at               DateTime     @default(now()) @db.Timestamptz
+  updated_at               DateTime     @updatedAt @db.Timestamptz
+
+  assignedManager User?          @relation("ClientAssignedManager", fields: [assigned_account_manager], references: [id])
+  creator         User           @relation("ClientCreatedBy", fields: [created_by], references: [id])
+  reports         Report[]
+  deleteRequests  DeleteRequest[]
+
+  @@map("clients")
+}
+
+model Report {
+  id          String     @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  client_id   String     @db.Uuid
+  uploaded_by String     @db.Uuid
+  report_type ReportType
+  title       String
+  description String?
+  file_url    String
+  file_name   String
+  file_size   BigInt?
+  mime_type   String?
+  created_at  DateTime   @default(now()) @db.Timestamptz
+  updated_at  DateTime   @updatedAt @db.Timestamptz
+
+  client   Client    @relation(fields: [client_id], references: [id], onDelete: Cascade)
+  uploader User      @relation(fields: [uploaded_by], references: [id])
+  comments Comment[]
+
+  @@map("reports")
+}
+
+model Comment {
+  id         String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  report_id  String   @db.Uuid
+  user_id    String   @db.Uuid
+  comment    String
+  created_at DateTime @default(now()) @db.Timestamptz
+
+  report Report @relation(fields: [report_id], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@map("comments")
+}
+
+model Message {
+  id          String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  sender_id   String   @db.Uuid
+  receiver_id String   @db.Uuid
+  message     String
+  attachment  String?
+  is_read     Boolean  @default(false)
+  created_at  DateTime @default(now()) @db.Timestamptz
+
+  sender   User @relation("MessageSender",   fields: [sender_id],   references: [id], onDelete: Cascade)
+  receiver User @relation("MessageReceiver", fields: [receiver_id], references: [id], onDelete: Cascade)
+
+  @@index([sender_id])
+  @@index([receiver_id])
+  @@map("messages")
+}
+
+model DeleteRequest {
+  id           String        @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  client_id    String        @db.Uuid
+  requested_by String        @db.Uuid
+  reason       String?
+  status       RequestStatus @default(pending)
+  approved_by  String?       @db.Uuid
+  reviewed_at  DateTime?     @db.Timestamptz
+  created_at   DateTime      @default(now()) @db.Timestamptz
+
+  client    Client @relation(fields: [client_id], references: [id], onDelete: Cascade)
+  requester User   @relation("DeleteRequestRequester", fields: [requested_by], references: [id])
+  approver  User?  @relation("DeleteRequestApprover",  fields: [approved_by],  references: [id])
+
+  @@map("delete_requests")
+}
+
+model Notification {
+  id         String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  user_id    String   @db.Uuid
+  title      String
+  message    String
+  link       String?
+  is_read    Boolean  @default(false)
+  created_at DateTime @default(now()) @db.Timestamptz
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@map("notifications")
+}
+
+model ActivityLog {
+  id         String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  user_id    String?  @db.Uuid
+  action     String
+  entity     String?
+  entity_id  String?  @db.Uuid
+  metadata   Json?
+  ip_address String?
+  created_at DateTime @default(now()) @db.Timestamptz
+
+  user User? @relation(fields: [user_id], references: [id], onDelete: SetNull)
+
+  @@index([user_id])
+  @@map("activity_logs")
+}
