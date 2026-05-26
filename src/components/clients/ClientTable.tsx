@@ -57,7 +57,10 @@ export function ClientTable({ clients, onEdit, onDelete, isDeleting }: Props) {
                       </AvatarFallback>
                     </Avatar>
                     <div>
-                      <p className="font-medium">{client.company_name}</p>
+                      <p className="font-medium hover:text-primary cursor-pointer"
+                onClick={() => window.location.href = `/manager/clients/${client.id}`}>
+                 {client.company_name}
+                     </p>
                       {client.website && (
                         <a href={client.website} target="_blank" rel="noopener noreferrer"
                           className="text-xs text-muted-foreground flex items-center gap-1 hover:text-primary">

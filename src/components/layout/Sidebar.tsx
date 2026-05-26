@@ -5,7 +5,8 @@ import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import {
   LayoutDashboard, Users, UserCheck, FileText,
-  CheckCircle, Settings, MessageSquare, FolderOpen, LogOut,
+  CheckCircle, Settings, MessageSquare, FolderOpen,
+  LogOut, Target, TrendingUp,
 } from 'lucide-react';
 import type { UserRole } from '@/types';
 import { logoutAction } from '@/lib/auth';
@@ -17,6 +18,8 @@ const managerNav: NavItem[] = [
   { label: 'Account Managers', href: '/manager/account-managers', icon: UserCheck },
   { label: 'Clients',          href: '/manager/clients',          icon: Users },
   { label: 'Reports',          href: '/manager/reports',          icon: FileText },
+  { label: 'Upsells',          href: '/manager/upsells',          icon: TrendingUp },
+  { label: 'Targets',          href: '/manager/targets',          icon: Target },
   { label: 'Approvals',        href: '/manager/approvals',        icon: CheckCircle },
   { label: 'Settings',         href: '/manager/settings',         icon: Settings },
 ];
@@ -25,6 +28,7 @@ const accountManagerNav: NavItem[] = [
   { label: 'Dashboard', href: '/account/dashboard', icon: LayoutDashboard },
   { label: 'Clients',   href: '/account/clients',   icon: Users },
   { label: 'Reports',   href: '/account/reports',   icon: FileText },
+  { label: 'Upsells',   href: '/account/upsells',   icon: TrendingUp },
   { label: 'Chat',      href: '/account/chat',      icon: MessageSquare },
 ];
 
@@ -55,12 +59,13 @@ export function Sidebar({ role }: { role: UserRole }) {
     <aside className="w-64 flex-shrink-0 flex flex-col bg-card border-r border-border">
       {/* Logo */}
       <div className="h-16 flex items-center gap-3 px-6 border-b border-border">
-  <img src="/logo.png" alt="Web Maniacs" className="h-8 w-auto" />
-  <div>
-    <p className="text-sm font-bold leading-none">Client Portal</p>
-    <p className="text-xs text-muted-foreground mt-0.5">Web Maniacs Ltd</p>
-  </div>
-</div>
+        <img src="/logo.png" alt="Web Maniacs"
+          style={{ height: '32px', width: 'auto', background: 'white', padding: '4px', borderRadius: '6px' }} />
+        <div>
+          <p className="text-xs font-bold leading-none">Client Portal</p>
+          <p className="text-xs text-muted-foreground mt-0.5">Web Maniacs Ltd</p>
+        </div>
+      </div>
 
       {/* Role badge */}
       <div className="px-4 pt-4 pb-2">
