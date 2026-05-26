@@ -55,7 +55,7 @@ export function Sidebar({ role }: { role: UserRole }) {
     <aside className="w-64 flex-shrink-0 flex flex-col bg-card border-r border-border">
       {/* Logo */}
       <div className="h-16 flex items-center gap-3 px-6 border-b border-border">
-  <img src="/logo.svg" alt="Web Maniacs" className="h-8 w-auto" />
+  <img src="/logo.png" alt="Web Maniacs" className="h-8 w-auto" />
   <div>
     <p className="text-sm font-bold leading-none">Client Portal</p>
     <p className="text-xs text-muted-foreground mt-0.5">Web Maniacs Ltd</p>
