@@ -33,11 +33,11 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-        <img 
-  src="https://wm-client-portal.vercel.app/logo.png" 
-  alt="Web Maniacs" 
-  className="h-16 w-auto mx-auto mb-2" 
-/>
+          <img
+            src="/logo.png"
+            alt="Web Maniacs"
+            style={{ height: '80px', width: 'auto', margin: '0 auto 16px', display: 'block', background: 'white', padding: '8px', borderRadius: '8px' }}
+          />
           <h1 className="text-2xl font-bold">Web Maniacs Client Portal</h1>
           <p className="text-muted-foreground text-sm mt-1">Web Maniacs Ltd</p>
         </div>
