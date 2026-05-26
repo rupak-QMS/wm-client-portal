@@ -55,14 +55,12 @@ export function Sidebar({ role }: { role: UserRole }) {
     <aside className="w-64 flex-shrink-0 flex flex-col bg-card border-r border-border">
       {/* Logo */}
       <div className="h-16 flex items-center gap-3 px-6 border-b border-border">
-        <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-          <span className="text-xs font-bold text-primary-foreground">WM</span>
-        </div>
-        <div>
-          <p className="text-sm font-bold leading-none">Client Portal</p>
-          <p className="text-xs text-muted-foreground mt-0.5">Web Maniacs Ltd</p>
-        </div>
-      </div>
+  <img src="/logo.svg" alt="Web Maniacs" className="h-8 w-auto" />
+  <div>
+    <p className="text-sm font-bold leading-none">Client Portal</p>
+    <p className="text-xs text-muted-foreground mt-0.5">Web Maniacs Ltd</p>
+  </div>
+</div>
 
       {/* Role badge */}
       <div className="px-4 pt-4 pb-2">

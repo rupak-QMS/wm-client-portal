@@ -33,10 +33,8 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-primary text-primary-foreground text-2xl font-bold mb-4">
-            WM
-          </div>
-          <h1 className="text-2xl font-bold">WM Client Portal</h1>
+          <img src="/logo.svg" alt="Web Maniacs" className="h-16 w-auto mx-auto mb-2" />
+          <h1 className="text-2xl font-bold">Web Maniacs Client Portal</h1>
           <p className="text-muted-foreground text-sm mt-1">Web Maniacs Ltd</p>
         </div>
 
