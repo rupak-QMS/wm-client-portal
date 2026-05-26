@@ -4,37 +4,39 @@ import { cn } from '@/lib/utils';
 import type { LucideIcon } from 'lucide-react';
 
 const colorMap = {
-  blue:   { bg: 'bg-blue-500/10',   text: 'text-blue-400',   border: 'border-blue-500/20' },
-  green:  { bg: 'bg-green-500/10',  text: 'text-green-400',  border: 'border-green-500/20' },
-  amber:  { bg: 'bg-amber-500/10',  text: 'text-amber-400',  border: 'border-amber-500/20' },
-  purple: { bg: 'bg-purple-500/10', text: 'text-purple-400', border: 'border-purple-500/20' },
+  blue:   { bg: 'rgba(59,130,246,0.1)',  text: 'rgb(96,165,250)',  border: 'rgba(59,130,246,0.2)'  },
+  green:  { bg: 'rgba(34,197,94,0.1)',   text: 'rgb(74,222,128)',  border: 'rgba(34,197,94,0.2)'   },
+  amber:  { bg: 'rgba(245,158,11,0.1)',  text: 'rgb(251,191,36)',  border: 'rgba(245,158,11,0.2)'  },
+  purple: { bg: 'rgba(168,85,247,0.1)',  text: 'rgb(192,132,252)', border: 'rgba(168,85,247,0.2)'  },
 };
 
 interface Props {
-  title:  string;
-  value:  number | string;
-  icon:   LucideIcon;
-  color:  keyof typeof colorMap;
-  trend?: 'up' | 'down';
+  title:   string;
+  value:   number | string;
+  icon:    LucideIcon;
+  color:   keyof typeof colorMap;
+  trend?:  'up' | 'down';
   suffix?: string;
 }
 
 export function StatsCard({ title, value, icon: Icon, color, trend, suffix }: Props) {
   const c = colorMap[color];
   return (
-    <Card className="border-border/50 bg-card/50 backdrop-blur-sm hover:bg-card transition-colors">
+    <Card className="border-border/50 hover:border-border/80 transition-all duration-200">
       <CardContent className="p-5">
         <div className="flex items-start justify-between">
-          <div className="space-y-1">
+          <div>
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
               {title}
             </p>
-            <p className="text-2xl font-bold">
-              {value}{suffix && <span className="text-sm font-normal text-muted-foreground ml-1">{suffix}</span>}
+            <p className="text-3xl font-bold mt-2 text-foreground">
+              {value}
+              {suffix && <span className="text-sm font-normal text-muted-foreground ml-1">{suffix}</span>}
             </p>
           </div>
-          <div className={cn('p-2.5 rounded-xl border', c.bg, c.border)}>
-            <Icon className={cn('h-5 w-5', c.text)} />
+          <div className="p-2.5 rounded-xl flex-shrink-0"
+            style={{ background: c.bg, border: `1px solid ${c.border}` }}>
+            <Icon className="h-5 w-5" style={{ color: c.text }} />
           </div>
         </div>
         {trend && (

@@ -1,12 +1,12 @@
 'use client';
 
 import { useState }       from 'react';
-import { Badge }          from '@/components/ui/badge';
+import { useRouter }      from 'next/navigation';
 import { Button }         from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { ConfirmDialog }  from '@/components/shared/ConfirmDialog';
 import { getInitials, formatTime } from '@/lib/utils';
-import { Pencil, Trash2, Globe, Mail } from 'lucide-react';
+import { Pencil, Trash2, Globe, Mail, ExternalLink } from 'lucide-react';
 import type { Client } from '@/types';
 
 const statusColors = {
@@ -20,10 +20,12 @@ interface Props {
   onEdit:     (client: Client) => void;
   onDelete:   (id: string) => void;
   isDeleting: boolean;
+  showDetail?: boolean;
 }
 
-export function ClientTable({ clients, onEdit, onDelete, isDeleting }: Props) {
+export function ClientTable({ clients, onEdit, onDelete, isDeleting, showDetail = false }: Props) {
   const [confirmId, setConfirmId] = useState<string | null>(null);
+  const router = useRouter();
 
   return (
     <>
@@ -57,13 +59,17 @@ export function ClientTable({ clients, onEdit, onDelete, isDeleting }: Props) {
                       </AvatarFallback>
                     </Avatar>
                     <div>
-                      <p className="font-medium hover:text-primary cursor-pointer"
-                onClick={() => window.location.href = `/manager/clients/${client.id}`}>
-                 {client.company_name}
-                     </p>
+                      <p
+                        className="font-medium hover:text-primary cursor-pointer flex items-center gap-1"
+                        onClick={() => router.push(`/manager/clients/${client.id}`)}
+                      >
+                        {client.company_name}
+                        <ExternalLink className="h-3 w-3 opacity-50" />
+                      </p>
                       {client.website && (
                         <a href={client.website} target="_blank" rel="noopener noreferrer"
-                          className="text-xs text-muted-foreground flex items-center gap-1 hover:text-primary">
+                          className="text-xs text-muted-foreground flex items-center gap-1 hover:text-primary"
+                          onClick={e => e.stopPropagation()}>
                           <Globe className="h-3 w-3" />
                           {client.website.replace('https://', '').replace('http://', '')}
                         </a>

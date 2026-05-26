@@ -1,12 +1,11 @@
 'use client';
 
-import { ThemeToggle } from './ThemeToggle';
+import { ThemeToggle }    from './ThemeToggle';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Badge }   from '@/components/ui/badge';
-import { Bell }    from 'lucide-react';
-import { Button }  from '@/components/ui/button';
-import { getInitials } from '@/lib/utils';
-import type { User } from '@/types';
+import { Bell }           from 'lucide-react';
+import { Button }         from '@/components/ui/button';
+import { getInitials }    from '@/lib/utils';
+import type { User }      from '@/types';
 
 const roleLabels: Record<string, string> = {
   manager:         'Manager',
@@ -14,40 +13,48 @@ const roleLabels: Record<string, string> = {
   client:          'Client',
 };
 
-const roleColors: Record<string, string> = {
-  manager:         'bg-purple-500/20 text-purple-400 border-purple-500/30',
-  account_manager: 'bg-blue-500/20   text-blue-400   border-blue-500/30',
-  client:          'bg-green-500/20  text-green-400  border-green-500/30',
+const roleBadgeColors: Record<string, string> = {
+  manager:         'bg-purple-500/20 text-purple-400',
+  account_manager: 'bg-blue-500/20   text-blue-400',
+  client:          'bg-green-500/20  text-green-400',
 };
 
 export function Navbar({ user }: { user: User }) {
   return (
-    <header className="h-16 border-b border-border bg-card/50 backdrop-blur-sm flex items-center justify-between px-6 flex-shrink-0">
-      <div className="flex items-center gap-3">
-        <div>
-          <p className="text-sm font-semibold">{user.full_name}</p>
-          <p className="text-xs text-muted-foreground">
-            Welcome back 👋
-          </p>
-        </div>
+    <header className="h-16 border-b border-border flex items-center justify-between px-6 flex-shrink-0"
+      style={{ background: 'hsl(224 71% 5%)' }}>
+
+      {/* Left */}
+      <div>
+        <p className="text-sm font-semibold text-foreground">
+          Welcome back, {user.full_name.split(' ')[0]} 👋
+        </p>
+        <p className="text-xs text-muted-foreground">
+          {new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+        </p>
       </div>
 
+      {/* Right */}
       <div className="flex items-center gap-2">
         <ThemeToggle />
-        <Button variant="ghost" size="icon" className="relative">
+
+        <Button variant="ghost" size="icon" className="relative text-muted-foreground hover:text-foreground">
           <Bell className="h-4 w-4" />
-          <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-primary rounded-full" />
+          <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-primary rounded-full ring-2 ring-background" />
         </Button>
-        <div className="flex items-center gap-2 ml-2 pl-2 border-l border-border">
-          <Avatar className="h-8 w-8 ring-2 ring-border">
+
+        <div className="flex items-center gap-2.5 ml-1 pl-3 border-l border-border">
+          <Avatar className="h-8 w-8 ring-2 ring-primary/20">
             <AvatarImage src={user.avatar_url ?? undefined} />
-            <AvatarFallback className="text-xs bg-accent">
+            <AvatarFallback
+              className="text-xs font-bold"
+              style={{ background: 'hsl(var(--primary) / 0.2)', color: 'hsl(var(--primary))' }}>
               {getInitials(user.full_name)}
             </AvatarFallback>
           </Avatar>
           <div className="hidden md:block">
-            <p className="text-xs font-medium leading-none">{user.full_name}</p>
-            <span className={`text-xs px-1.5 py-0.5 rounded-full border font-medium mt-0.5 inline-block ${roleColors[user.role]}`}>
+            <p className="text-xs font-semibold leading-none text-foreground">{user.full_name}</p>
+            <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium mt-1 inline-block ${roleBadgeColors[user.role]}`}>
               {roleLabels[user.role]}
             </span>
           </div>
