@@ -1,57 +1,76 @@
-import { Card, CardContent } from '@/components/ui/card';
-import { TrendingUp, TrendingDown } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import type { LucideIcon } from 'lucide-react';
+'use client';
 
-const colorMap = {
-  blue:   { bg: 'rgba(59,130,246,0.1)',  text: 'rgb(96,165,250)',  border: 'rgba(59,130,246,0.2)'  },
-  green:  { bg: 'rgba(34,197,94,0.1)',   text: 'rgb(74,222,128)',  border: 'rgba(34,197,94,0.2)'   },
-  amber:  { bg: 'rgba(245,158,11,0.1)',  text: 'rgb(251,191,36)',  border: 'rgba(245,158,11,0.2)'  },
-  purple: { bg: 'rgba(168,85,247,0.1)',  text: 'rgb(192,132,252)', border: 'rgba(168,85,247,0.2)'  },
+import type { LucideIcon } from 'lucide-react';
+import { ArrowUpRight, ArrowDownRight } from 'lucide-react';
+
+const COLOR_MAP: Record<string, { icon: string; glow: string }> = {
+  blue:   { icon: '#60a5fa', glow: 'rgba(96,165,250,.15)'  },
+  green:  { icon: '#34d399', glow: 'rgba(52,211,153,.15)'  },
+  amber:  { icon: '#fbbf24', glow: 'rgba(251,191,36,.15)'  },
+  purple: { icon: '#a78bfa', glow: 'rgba(167,139,250,.15)' },
+  pink:   { icon: '#f472b6', glow: 'rgba(244,114,182,.15)' },
+  red:    { icon: '#f87171', glow: 'rgba(248,113,113,.15)' },
 };
 
-interface Props {
-  title:   string;
-  value:   number | string;
-  icon:    LucideIcon;
-  color:   keyof typeof colorMap;
-  trend?:  'up' | 'down';
-  suffix?: string;
+interface StatsCardProps {
+  title: string;
+  value: number | string;
+  icon: LucideIcon;
+  color?: string;
+  trend?: 'up' | 'down';
+  delta?: string;
 }
 
-export function StatsCard({ title, value, icon: Icon, color, trend, suffix }: Props) {
-  const c = colorMap[color];
+export function StatsCard({ title, value, icon: Icon, color = 'purple', trend, delta }: StatsCardProps) {
+  const { icon: iconColor, glow } = COLOR_MAP[color] ?? COLOR_MAP.purple;
+
   return (
-    <Card className="border-border/50 hover:border-border/80 transition-all duration-200">
-      <CardContent className="p-5">
-        <div className="flex items-start justify-between">
-          <div>
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-              {title}
-            </p>
-            <p className="text-3xl font-bold mt-2 text-foreground">
-              {value}
-              {suffix && <span className="text-sm font-normal text-muted-foreground ml-1">{suffix}</span>}
-            </p>
-          </div>
-          <div className="p-2.5 rounded-xl flex-shrink-0"
-            style={{ background: c.bg, border: `1px solid ${c.border}` }}>
-            <Icon className="h-5 w-5" style={{ color: c.text }} />
-          </div>
+    <div
+      className="wm-stat"
+      style={{ transition: 'all .25s' }}
+    >
+      {/* Top row */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
+        <div style={{
+          width: 40, height: 40, borderRadius: 11,
+          background: glow,
+          border: `0.5px solid ${iconColor}33`,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          color: iconColor,
+        }}>
+          <Icon size={18} aria-hidden />
         </div>
-        {trend && (
-          <div className={cn(
-            'flex items-center gap-1 mt-3 text-xs font-medium',
-            trend === 'up' ? 'text-amber-400' : 'text-green-400'
-          )}>
-            {trend === 'up'
-              ? <TrendingUp className="h-3 w-3" />
-              : <TrendingDown className="h-3 w-3" />
-            }
-            {trend === 'up' ? 'Requires attention' : 'All good'}
-          </div>
+
+        {(trend || delta) && (
+          <span style={{
+            fontSize: '.72rem',
+            color: trend === 'down' ? '#f87171' : '#34d399',
+            display: 'flex', alignItems: 'center', gap: 3,
+            background: trend === 'down' ? 'rgba(248,113,113,.1)' : 'rgba(52,211,153,.1)',
+            padding: '3px 8px', borderRadius: 99,
+          }}>
+            {trend === 'down' ? <ArrowDownRight size={11} /> : <ArrowUpRight size={11} />}
+            {delta ?? (trend === 'up' ? 'Up' : 'Down')}
+          </span>
         )}
-      </CardContent>
-    </Card>
+      </div>
+
+      {/* Value */}
+      <div style={{ fontSize: '1.7rem', fontWeight: 700, color: '#f1f5f9', marginBottom: 4, lineHeight: 1 }}>
+        {value}
+      </div>
+
+      {/* Label */}
+      <div style={{ fontSize: '.78rem', color: 'rgba(148,163,184,.5)', letterSpacing: '.01em' }}>
+        {title}
+      </div>
+
+      {/* Bottom accent line */}
+      <div style={{
+        position: 'absolute', bottom: 0, left: 0, right: 0, height: 2,
+        background: `linear-gradient(90deg, transparent, ${iconColor}55, transparent)`,
+        borderRadius: '0 0 14px 14px',
+      }} />
+    </div>
   );
 }

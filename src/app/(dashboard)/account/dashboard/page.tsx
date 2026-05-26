@@ -1,9 +1,9 @@
 'use client';
 
-import { useQuery }        from '@tanstack/react-query';
-import { StatsCard }       from '@/components/dashboard/StatsCard';
-import { RecentUploads }   from '@/components/dashboard/RecentUploads';
-import { Users, FileText, MessageSquare, Clock } from 'lucide-react';
+import { useQuery }      from '@tanstack/react-query';
+import { StatsCard }     from '@/components/dashboard/StatsCard';
+import { RecentUploads } from '@/components/dashboard/RecentUploads';
+import { Users, FileText, MessageSquare, Clock, LayoutDashboard } from 'lucide-react';
 
 export default function AMDashboard() {
   const { data: clients = [] } = useQuery({
@@ -19,18 +19,36 @@ export default function AMDashboard() {
   const recentReports = reports.slice(0, 5);
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">My Dashboard</h1>
-        <p className="text-muted-foreground text-sm">Your clients and recent activity</p>
+    <div className="wm-page-inner">
+
+      {/* ── Header ── */}
+      <div style={{ marginBottom: 28 }} className="wm-fade-up">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+          <LayoutDashboard size={15} style={{ color: '#60a5fa' }} />
+          <span style={{ fontSize: '.72rem', color: 'rgba(148,163,184,.5)', textTransform: 'uppercase', letterSpacing: '.06em' }}>
+            Overview
+          </span>
+        </div>
+        <h1 style={{ fontSize: '1.65rem', fontWeight: 700, color: '#f1f5f9', marginBottom: 4 }}>
+          My Dashboard
+        </h1>
+        <p style={{ fontSize: '.875rem', color: 'rgba(148,163,184,.5)' }}>
+          Your clients and recent activity
+        </p>
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        <StatsCard title="Assigned Clients" value={clients.length} icon={Users} color="blue" />
-        <StatsCard title="Reports Uploaded" value={reports.length} icon={FileText} color="green" />
-        <StatsCard title="Pending Tasks" value={0} icon={Clock} color="amber" />
-        <StatsCard title="Messages" value={0} icon={MessageSquare} color="purple" />
+
+      {/* ── Stat cards ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 28 }} className="wm-fade-up">
+        <StatsCard title="Assigned Clients"  value={clients.length} icon={Users}         color="blue"   />
+        <StatsCard title="Reports Uploaded"  value={reports.length} icon={FileText}      color="green"  />
+        <StatsCard title="Pending Tasks"     value={0}              icon={Clock}         color="amber"  />
+        <StatsCard title="Messages"          value={0}              icon={MessageSquare} color="purple" />
       </div>
-      <RecentUploads reports={recentReports} />
+
+      {/* ── Recent uploads ── */}
+      <div className="wm-fade-up-2">
+        <RecentUploads reports={recentReports} />
+      </div>
     </div>
   );
 }

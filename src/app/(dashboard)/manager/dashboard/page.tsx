@@ -4,7 +4,7 @@ import prisma             from '@/lib/prisma';
 import { StatsCard }      from '@/components/dashboard/StatsCard';
 import { ActivityFeed }   from '@/components/dashboard/ActivityFeed';
 import { RecentUploads }  from '@/components/dashboard/RecentUploads';
-import { Users, UserCheck, ClipboardCheck, FileText } from 'lucide-react';
+import { Users, UserCheck, ClipboardCheck, FileText, LayoutDashboard } from 'lucide-react';
 
 export default async function ManagerDashboard() {
   const user = await getCurrentUser();
@@ -19,9 +19,7 @@ export default async function ManagerDashboard() {
       prisma.activityLog.findMany({
         take: 10,
         orderBy: { created_at: 'desc' },
-        include: {
-          user: { select: { full_name: true, avatar_url: true } },
-        },
+        include: { user: { select: { full_name: true, avatar_url: true } } },
       }),
       prisma.report.findMany({
         take: 5,
@@ -46,20 +44,34 @@ export default async function ManagerDashboard() {
   }));
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Manager Dashboard</h1>
-        <p className="text-muted-foreground text-sm">Overview of all portal activity</p>
+    <div className="wm-page-inner">
+
+      {/* ── Header ── */}
+      <div style={{ marginBottom: 28 }} className="wm-fade-up">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+          <LayoutDashboard size={15} style={{ color: '#a78bfa' }} />
+          <span style={{ fontSize: '.72rem', color: 'rgba(148,163,184,.5)', textTransform: 'uppercase', letterSpacing: '.06em' }}>
+            Overview
+          </span>
+        </div>
+        <h1 style={{ fontSize: '1.65rem', fontWeight: 700, color: '#f1f5f9', marginBottom: 4 }}>
+          Manager Dashboard
+        </h1>
+        <p style={{ fontSize: '.875rem', color: 'rgba(148,163,184,.5)' }}>
+          Overview of all portal activity
+        </p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        <StatsCard title="Total Clients"     value={clientCount}      icon={Users}         color="blue" />
-        <StatsCard title="Account Managers"  value={amCount}          icon={UserCheck}     color="green" />
-        <StatsCard title="Pending Approvals" value={pendingApprovals} icon={ClipboardCheck} color="amber" trend={pendingApprovals > 0 ? 'up' : undefined} />
-        <StatsCard title="Total Reports"     value={reportCount}      icon={FileText}      color="purple" />
+      {/* ── Stat cards ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 28 }} className="wm-fade-up">
+        <StatsCard title="Total Clients"     value={clientCount}      icon={Users}          color="blue"   />
+        <StatsCard title="Account Managers"  value={amCount}          icon={UserCheck}      color="green"  />
+        <StatsCard title="Pending Approvals" value={pendingApprovals} icon={ClipboardCheck} color="amber"  trend={pendingApprovals > 0 ? 'up' : undefined} />
+        <StatsCard title="Total Reports"     value={reportCount}      icon={FileText}       color="purple" />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* ── Bottom grid ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 20 }} className="wm-fade-up-2">
         <ActivityFeed  logs={serializedLogs} />
         <RecentUploads reports={serializedReports} />
       </div>

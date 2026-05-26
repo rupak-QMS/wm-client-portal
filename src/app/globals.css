@@ -1,81 +1,261 @@
-@import "tailwindcss";
+/* ── Reset ─────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body { font-family: var(--font-sans, system-ui, sans-serif); background: #06060f; color: #f1f5f9; -webkit-font-smoothing: antialiased; }
 
-:root {
-  --background: 0 0% 100%;
-  --foreground: 224 71% 4%;
-  --card: 0 0% 100%;
-  --card-foreground: 224 71% 4%;
-  --popover: 0 0% 100%;
-  --popover-foreground: 224 71% 4%;
-  --primary: 262 83% 58%;
-  --primary-foreground: 210 40% 98%;
-  --secondary: 220 14% 96%;
-  --secondary-foreground: 224 71% 4%;
-  --muted: 220 14% 96%;
-  --muted-foreground: 220 9% 46%;
-  --accent: 220 14% 96%;
-  --accent-foreground: 224 71% 4%;
-  --destructive: 0 84% 60%;
-  --destructive-foreground: 210 40% 98%;
-  --border: 220 13% 91%;
-  --input: 220 13% 91%;
-  --ring: 262 83% 58%;
-  --radius: 0.75rem;
+/* ── Scrollbar ─────────────────────────── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: rgba(255,255,255,.03); }
+::-webkit-scrollbar-thumb { background: rgba(124,58,237,.35); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(124,58,237,.6); }
+
+/* ── Animations ────────────────────────── */
+@keyframes float1    { 0%,100%{transform:translate(0,0) scale(1)} 50%{transform:translate(28px,-22px) scale(1.08)} }
+@keyframes float2    { 0%,100%{transform:translate(0,0) scale(1)} 50%{transform:translate(-22px,28px) scale(1.12)} }
+@keyframes float3    { 0%,100%{transform:translate(0,0)} 50%{transform:translate(16px,20px)} }
+@keyframes scan      { 0%{top:-100%} 100%{top:200%} }
+@keyframes bobPill   { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)} }
+@keyframes dotPulse  { 0%,100%{transform:scale(1);opacity:.7} 50%{transform:scale(1.4);opacity:1} }
+@keyframes fadeUp    { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+@keyframes fadeIn    { from{opacity:0} to{opacity:1} }
+@keyframes shimBtn   { 0%{left:-100%} 100%{left:200%} }
+@keyframes bdPulse   { 0%,100%{opacity:.45} 50%{opacity:1} }
+@keyframes borderGlow{ 0%,100%{border-color:rgba(124,58,237,.28)} 50%{border-color:rgba(96,165,250,.5)} }
+@keyframes spin      { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+@keyframes slideIn   { from{transform:translateX(-100%);opacity:0} to{transform:translateX(0);opacity:1} }
+@keyframes pulse     { 0%,100%{opacity:.5} 50%{opacity:1} }
+@keyframes gradMove  { 0%{background-position:0% 50%} 50%{background-position:100% 50%} 100%{background-position:0% 50%} }
+
+/* ── Shared glass card ─────────────────── */
+.wm-card {
+  background: rgba(10,10,28,.8);
+  border: 1px solid rgba(124,58,237,.2);
+  border-radius: 16px;
+  backdrop-filter: blur(20px);
+  transition: border-color .3s, box-shadow .3s;
+}
+.wm-card:hover {
+  border-color: rgba(124,58,237,.4);
+  box-shadow: 0 0 30px rgba(124,58,237,.07);
 }
 
-.dark {
-  --background: 224 71% 4%;
-  --foreground: 213 31% 91%;
-  --card: 224 71% 6%;
-  --card-foreground: 213 31% 91%;
-  --popover: 224 71% 6%;
-  --popover-foreground: 213 31% 91%;
-  --primary: 262 83% 65%;
-  --primary-foreground: 210 40% 98%;
-  --secondary: 223 47% 11%;
-  --secondary-foreground: 213 31% 91%;
-  --muted: 223 47% 11%;
-  --muted-foreground: 215 20% 55%;
-  --accent: 223 47% 14%;
-  --accent-foreground: 213 31% 91%;
-  --destructive: 0 63% 45%;
-  --destructive-foreground: 210 40% 98%;
-  --border: 223 47% 14%;
-  --input: 223 47% 14%;
-  --ring: 262 83% 65%;
+/* ── Stat card ─────────────────────────── */
+.wm-stat {
+  background: rgba(10,10,28,.8);
+  border: 1px solid rgba(124,58,237,.18);
+  border-radius: 14px;
+  padding: 20px;
+  transition: all .25s;
+  position: relative;
+  overflow: hidden;
+}
+.wm-stat::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg,transparent,rgba(167,139,250,.4),transparent);
+}
+.wm-stat:hover {
+  transform: translateY(-2px);
+  border-color: rgba(124,58,237,.38);
+  box-shadow: 0 8px 30px rgba(124,58,237,.1);
 }
 
-* {
-  border-color: hsl(var(--border));
-  box-sizing: border-box;
+/* ── Sidebar ───────────────────────────── */
+.wm-sidebar {
+  width: 240px;
+  background: rgba(6,6,15,.95);
+  border-right: 1px solid rgba(124,58,237,.12);
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  top: 0; bottom: 0; left: 0;
+  z-index: 50;
+  backdrop-filter: blur(20px);
+}
+.wm-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: .85rem;
+  color: rgba(148,163,184,.65);
+  text-decoration: none;
+  transition: all .2s;
+  cursor: pointer;
+  border: none;
+  background: none;
+  width: 100%;
+  text-align: left;
+}
+.wm-nav-item:hover {
+  background: rgba(124,58,237,.1);
+  color: #c4b5fd;
+}
+.wm-nav-item.active {
+  background: rgba(124,58,237,.18);
+  color: #a78bfa;
+  border: 0.5px solid rgba(124,58,237,.25);
 }
 
-body {
-  background-color: hsl(var(--background));
-  color: hsl(var(--foreground));
-  font-feature-settings: "rlig" 1, "calt" 1;
+/* ── Buttons ───────────────────────────── */
+.wm-btn-primary {
+  background: linear-gradient(135deg,#7c3aed,#4f46e5,#2563eb);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 10px 20px;
+  font-size: .875rem;
+  font-weight: 600;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: transform .15s, box-shadow .25s;
+  letter-spacing: .02em;
+}
+.wm-btn-primary::after {
+  content: '';
+  position: absolute;
+  top: 0; left: -100%;
+  width: 60%; height: 100%;
+  background: linear-gradient(90deg,transparent,rgba(255,255,255,.2),transparent);
+  animation: shimBtn 2.5s ease-in-out infinite;
+}
+.wm-btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 28px rgba(99,102,241,.45);
+}
+.wm-btn-ghost {
+  background: rgba(255,255,255,.04);
+  color: rgba(148,163,184,.8);
+  border: 0.5px solid rgba(255,255,255,.08);
+  border-radius: 10px;
+  padding: 10px 20px;
+  font-size: .875rem;
+  cursor: pointer;
+  transition: all .2s;
+}
+.wm-btn-ghost:hover {
+  background: rgba(124,58,237,.1);
+  border-color: rgba(124,58,237,.3);
+  color: #c4b5fd;
 }
 
-/* Custom scrollbar */
-::-webkit-scrollbar { width: 5px; height: 5px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: hsl(var(--border)); border-radius: 999px; }
-::-webkit-scrollbar-thumb:hover { background: hsl(var(--muted-foreground)); }
-
-/* Smooth transitions */
-*, *::before, *::after {
-  transition-property: background-color, border-color, color, fill, stroke;
-  transition-duration: 150ms;
-  transition-timing-function: ease;
+/* ── Inputs ────────────────────────────── */
+.wm-input {
+  width: 100%;
+  background: rgba(255,255,255,.04);
+  border: 1px solid rgba(124,58,237,.18);
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: .875rem;
+  color: #f1f5f9;
+  outline: none;
+  transition: all .25s;
 }
-/* ── Futuristic Login Animations ── */
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to   { transform: rotate(360deg); }
+.wm-input::placeholder { color: rgba(148,163,184,.3); }
+.wm-input:focus {
+  border-color: rgba(124,58,237,.65);
+  background: rgba(124,58,237,.07);
+  box-shadow: 0 0 0 3px rgba(124,58,237,.12);
 }
 
-/* Mobile: hide left panel */
+/* ── Table ─────────────────────────────── */
+.wm-table { width: 100%; border-collapse: collapse; }
+.wm-table th {
+  text-align: left;
+  font-size: .72rem;
+  font-weight: 500;
+  color: rgba(148,163,184,.55);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  padding: 10px 16px;
+  border-bottom: 1px solid rgba(124,58,237,.12);
+}
+.wm-table td {
+  padding: 13px 16px;
+  font-size: .85rem;
+  color: rgba(241,245,249,.85);
+  border-bottom: 1px solid rgba(255,255,255,.04);
+}
+.wm-table tr:hover td { background: rgba(124,58,237,.05); }
+
+/* ── Badge ─────────────────────────────── */
+.wm-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 99px;
+  font-size: .7rem;
+  font-weight: 500;
+}
+.wm-badge-green  { background:rgba(52,211,153,.12); color:#34d399; border:0.5px solid rgba(52,211,153,.25); }
+.wm-badge-amber  { background:rgba(251,191,36,.12);  color:#fbbf24; border:0.5px solid rgba(251,191,36,.25); }
+.wm-badge-purple { background:rgba(167,139,250,.12); color:#a78bfa; border:0.5px solid rgba(167,139,250,.25); }
+.wm-badge-red    { background:rgba(248,113,113,.12); color:#f87171; border:0.5px solid rgba(248,113,113,.25); }
+.wm-badge-blue   { background:rgba(96,165,250,.12);  color:#60a5fa; border:0.5px solid rgba(96,165,250,.25); }
+
+/* ── Grid bg ───────────────────────────── */
+.wm-grid-bg {
+  position: fixed;
+  inset: 0;
+  opacity: .04;
+  background-image:
+    linear-gradient(rgba(139,92,246,1) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(139,92,246,1) 1px, transparent 1px);
+  background-size: 44px 44px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ── Orbs ──────────────────────────────── */
+.wm-orb {
+  position: fixed;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ── Page layout ───────────────────────── */
+.wm-page { margin-left: 240px; min-height: 100vh; position: relative; z-index: 1; }
+.wm-page-inner { padding: 32px 36px; max-width: 1200px; }
+
+/* ── Topbar ────────────────────────────── */
+.wm-topbar {
+  height: 60px;
+  border-bottom: 1px solid rgba(124,58,237,.1);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 36px;
+  background: rgba(6,6,15,.7);
+  backdrop-filter: blur(16px);
+  position: sticky;
+  top: 0;
+  z-index: 40;
+}
+
+/* ── Animations util ───────────────────── */
+.wm-fade-up { animation: fadeUp .5s ease both; }
+.wm-fade-up-2 { animation: fadeUp .5s .1s ease both; }
+.wm-fade-up-3 { animation: fadeUp .5s .2s ease both; }
+
+/* ── Mobile ────────────────────────────── */
 @media (max-width: 768px) {
+  .wm-sidebar { transform: translateX(-100%); transition: transform .3s; }
+  .wm-sidebar.open { transform: translateX(0); }
+  .wm-page { margin-left: 0; }
+  .wm-page-inner { padding: 20px 16px; }
+  .wm-topbar { padding: 0 16px; }
   .wm-left { display: none !important; }
-  .wm-right { padding: 24px 20px !important; }
+}
+
+/* ── Divider ───────────────────────────── */
+.wm-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(124,58,237,.25), transparent);
+  margin: 24px 0;
 }
