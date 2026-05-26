@@ -68,3 +68,14 @@ body {
   transition-duration: 150ms;
   transition-timing-function: ease;
 }
+/* ── Futuristic Login Animations ── */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* Mobile: hide left panel */
+@media (max-width: 768px) {
+  .wm-left { display: none !important; }
+  .wm-right { padding: 24px 20px !important; }
+}
