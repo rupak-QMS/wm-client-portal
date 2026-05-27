@@ -43,7 +43,7 @@ export default function TargetsPage() {
   const achievedMap: Record<string, number> = {};
   upsells.forEach((u: any) => {
     const amId = u.account_manager_id ?? u.accountManager?.id;
-    if (amId) achievedMap[amId] = (achievedMap[amId] ?? 0) + parseFloat(u.total_cost || 0);
+    if (amId) achievedMap[amId] = (achievedMap[amId] ?? 0) + parseFloat(u.upfront_amount || 0);
   });
 
   // Merge targets with achieved data
@@ -59,7 +59,7 @@ export default function TargetsPage() {
   managers.forEach((m: User) => {
     const hasTarget = targets.some((t: any) => t.account_manager_id === m.id);
     if (!hasTarget && achievedMap[m.id]) {
-      rows.push({ account_manager_id:m.id, accountManager:m, target_amount:0, currency:'USD', achieved:achievedMap[m.id], left:0, pct:0 });
+      rows.push({ account_manager_id:m.id, accountManager:m, target_amount:0, currency:'USD', achieved:achievedMap[m.id], left:0, pct:0, month, year });
     }
   });
 
