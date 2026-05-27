@@ -20,6 +20,7 @@ const NAV_MANAGER = [
   { href: '/manager/targets',          icon: Target,          label: 'AM Targets'       },
   { href: '/manager/approvals',        icon: CheckSquare,     label: 'Approvals'        },
   { href: '/manager/account-managers', icon: UserCheck,       label: 'Account Managers' },
+  { href: '/manager/sales-team',       icon: Users,           label: 'Sales Team'       },
   { href: '/manager/sales-approvals',  icon: CheckSquare,     label: 'Sales Approvals'  },
   { href: '/manager/sales-analytics',  icon: BarChart2,       label: 'Sales Analytics'  },
   { href: '/manager/sales-targets',    icon: Target,          label: 'Sales Targets'    },
@@ -36,6 +37,7 @@ const NAV_ACCOUNT = [
 const NAV_SALES = [
   { href: '/sales/dashboard',   icon: LayoutDashboard, label: 'Dashboard'   },
   { href: '/sales/leads',       icon: Users,           label: 'My Leads'    },
+  { href: '/sales/logs',        icon: FileText,        label: 'Sales Logs'  },
   { href: '/sales/targets',     icon: Target,          label: 'My Targets'  },
   { href: '/sales/performance', icon: TrendingUp,      label: 'Performance' },
 ];
