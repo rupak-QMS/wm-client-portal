@@ -1,52 +1,35 @@
-import { redirect }       from 'next/navigation';
-import { getCurrentUser } from '@/lib/auth';
-import prisma             from '@/lib/prisma';
-import { StatsCard }      from '@/components/dashboard/StatsCard';
-import { ActivityFeed }   from '@/components/dashboard/ActivityFeed';
-import { RecentUploads }  from '@/components/dashboard/RecentUploads';
+'use client';
+import { useQuery }      from '@tanstack/react-query';
+import { StatsCard }     from '@/components/dashboard/StatsCard';
+import { ActivityFeed }  from '@/components/dashboard/ActivityFeed';
+import { RecentUploads } from '@/components/dashboard/RecentUploads';
 import { Users, UserCheck, ClipboardCheck, FileText, LayoutDashboard } from 'lucide-react';
 
-export default async function ManagerDashboard() {
-  const user = await getCurrentUser();
-  if (!user || user.role !== 'manager') redirect('/login');
+export default function ManagerDashboard() {
+  const { data: stats } = useQuery({
+    queryKey: ['manager-stats'],
+    queryFn:  async () => (await (await fetch('/api/dashboard/stats')).json()).data,
+  });
 
-  const [clientCount, amCount, pendingApprovals, reportCount, recentLogs, recentReports] =
-    await Promise.all([
-      prisma.client.count(),
-      prisma.user.count({ where: { role: 'account_manager' } }),
-      prisma.deleteRequest.count({ where: { status: 'pending' } }),
-      prisma.report.count(),
-      prisma.activityLog.findMany({
-        take: 10,
-        orderBy: { created_at: 'desc' },
-        include: { user: { select: { full_name: true, avatar_url: true } } },
-      }),
-      prisma.report.findMany({
-        take: 5,
-        orderBy: { created_at: 'desc' },
-        include: {
-          client:   { select: { company_name: true } },
-          uploader: { select: { full_name: true } },
-        },
-      }),
-    ]);
+  const { data: recentLogs = [] } = useQuery({
+    queryKey: ['activity-logs'],
+    queryFn:  async () => (await (await fetch('/api/activity-logs')).json()).data ?? [],
+  });
 
-  const serializedLogs = recentLogs.map(log => ({
-    ...log,
-    created_at: log.created_at.toISOString(),
-  }));
+  const { data: recentReports = [] } = useQuery({
+    queryKey: ['recent-reports'],
+    queryFn:  async () => (await (await fetch('/api/reports?limit=5')).json()).data ?? [],
+  });
 
-  const serializedReports = recentReports.map(r => ({
-    ...r,
-    created_at: r.created_at.toISOString(),
-    updated_at: r.updated_at.toISOString(),
-    file_size:  r.file_size ? Number(r.file_size) : null,
-  }));
+  const clientCount      = stats?.clientCount      ?? '—';
+  const amCount          = stats?.amCount          ?? '—';
+  const pendingApprovals = stats?.pendingApprovals ?? 0;
+  const reportCount      = stats?.reportCount      ?? '—';
 
   return (
     <div className="wm-page-inner">
 
-      {/* ── Header ── */}
+      {/* Header */}
       <div style={{ marginBottom: 28 }} className="wm-fade-up">
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
           <LayoutDashboard size={15} style={{ color: '#a78bfa' }} />
@@ -62,7 +45,7 @@ export default async function ManagerDashboard() {
         </p>
       </div>
 
-      {/* ── Stat cards ── */}
+      {/* Stat cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 28 }} className="wm-fade-up">
         <StatsCard title="Total Clients"     value={clientCount}      icon={Users}          color="blue"   />
         <StatsCard title="Account Managers"  value={amCount}          icon={UserCheck}      color="green"  />
@@ -70,10 +53,10 @@ export default async function ManagerDashboard() {
         <StatsCard title="Total Reports"     value={reportCount}      icon={FileText}       color="purple" />
       </div>
 
-      {/* ── Bottom grid ── */}
+      {/* Bottom grid */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 20 }} className="wm-fade-up-2">
-        <ActivityFeed  logs={serializedLogs} />
-        <RecentUploads reports={serializedReports} />
+        <ActivityFeed  logs={recentLogs} />
+        <RecentUploads reports={recentReports} />
       </div>
     </div>
   );
