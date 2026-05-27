@@ -1,85 +1,72 @@
 'use client';
-
-import { useState }              from 'react';
+import { useState }                 from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Button }                from '@/components/ui/button';
-import { ClientTable }           from '@/components/clients/ClientTable';
-import { AddClientModal }        from '@/components/clients/AddClientModal';
-import { EditClientModal }       from '@/components/clients/EditClientModal';
-import { UserPlus }              from 'lucide-react';
-import { toast }                 from 'sonner';
-import type { Client, User }     from '@/types';
+import { ReportCard }               from '@/components/reports/ReportCard';
+import { UploadReportModal }        from '@/components/reports/UploadReportModal';
+import { Upload, FileText }         from 'lucide-react';
+import { useAuthStore }             from '@/store/authStore';
+import type { Report, Client }      from '@/types';
 
-export default function ClientsPage() {
-  const [showAdd,    setShowAdd]    = useState(false);
-  const [editClient, setEditClient] = useState<Client | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const qc = useQueryClient();
+export default function ManagerReportsPage() {
+  const [showUpload, setShowUpload] = useState(false);
+  const user = useAuthStore(s => s.user);
+  const qc   = useQueryClient();
 
-  const { data: clients = [], isLoading } = useQuery<Client[]>({
+  const { data: reports = [], isLoading } = useQuery<Report[]>({
+    queryKey: ['reports'],
+    queryFn:  async () => (await (await fetch('/api/reports')).json()).data,
+  });
+
+  const { data: clients = [] } = useQuery<Client[]>({
     queryKey: ['clients'],
     queryFn:  async () => (await (await fetch('/api/clients')).json()).data,
   });
 
-  const { data: managers = [] } = useQuery<User[]>({
-    queryKey: ['account-managers'],
-    queryFn:  async () => (await (await fetch('/api/users?role=account_manager')).json()).data,
-  });
-
-  const handleDelete = async (id: string) => {
-    setIsDeleting(true);
-    const res  = await fetch(`/api/clients/${id}`, { method: 'DELETE' });
-    const json = await res.json();
-    if (!res.ok) {
-      toast.error(json.error);
-    } else {
-      toast.success('Client deleted');
-      qc.invalidateQueries({ queryKey: ['clients'] });
-    }
-    setIsDeleting(false);
-  };
-
-  const refresh = () => qc.invalidateQueries({ queryKey: ['clients'] });
+  const refresh = () => qc.invalidateQueries({ queryKey: ['reports'] });
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="wm-page-inner">
+
+      {/* Header */}
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:28 }} className="wm-fade-up">
         <div>
-          <h1 className="text-2xl font-bold">Clients</h1>
-          <p className="text-muted-foreground text-sm">
-            Manage all your clients
-          </p>
+          <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:6 }}>
+            <FileText size={15} style={{ color:'#60a5fa' }} />
+            <span style={{ fontSize:'.72rem', color:'rgba(148,163,184,.5)', textTransform:'uppercase', letterSpacing:'.06em' }}>Analytics</span>
+          </div>
+          <h1 style={{ fontSize:'1.65rem', fontWeight:700, color:'#f1f5f9', marginBottom:4 }}>Reports</h1>
+          <p style={{ fontSize:'.875rem', color:'rgba(148,163,184,.5)' }}>All client reports and uploads</p>
         </div>
-        <Button onClick={() => setShowAdd(true)}>
-          <UserPlus className="mr-2 h-4 w-4" />
-          Add Client
-        </Button>
+        <button className="wm-btn-primary" onClick={() => setShowUpload(true)}
+          style={{ display:'flex', alignItems:'center', gap:7, height:38 }}>
+          <Upload size={15}/> Upload Report
+        </button>
       </div>
 
+      {/* Content */}
       {isLoading ? (
-        <div className="text-center py-10 text-muted-foreground">Loading...</div>
+        <div style={{ textAlign:'center', padding:'40px', color:'rgba(148,163,184,.3)' }}>Loading...</div>
+      ) : reports.length === 0 ? (
+        <div className="wm-card" style={{ padding:'60px 24px', textAlign:'center' }}>
+          <div style={{ width:52, height:52, borderRadius:14, background:'rgba(96,165,250,.1)', border:'0.5px solid rgba(96,165,250,.2)', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 14px', color:'#60a5fa' }}>
+            <FileText size={22} />
+          </div>
+          <p style={{ fontSize:'.95rem', color:'rgba(148,163,184,.4)', marginBottom:4 }}>No reports yet</p>
+          <p style={{ fontSize:'.8rem', color:'rgba(148,163,184,.25)' }}>Upload your first report to get started</p>
+        </div>
       ) : (
-        <ClientTable
-          clients={clients}
-          onEdit={setEditClient}
-          onDelete={handleDelete}
-          isDeleting={isDeleting}
-        />
+        <div className="wm-fade-up-2" style={{ display:'flex', flexDirection:'column', gap:12 }}>
+          {reports.map(r => (
+            <ReportCard key={r.id} report={r} currentUserId={user?.id ?? ''} />
+          ))}
+        </div>
       )}
 
-      <AddClientModal
-        open={showAdd}
-        onClose={() => setShowAdd(false)}
+      <UploadReportModal
+        open={showUpload}
+        onClose={() => setShowUpload(false)}
         onSuccess={refresh}
-        managers={managers}
-      />
-
-      <EditClientModal
-        open={!!editClient}
-        onClose={() => setEditClient(null)}
-        onSuccess={refresh}
-        client={editClient}
-        managers={managers}
+        clients={clients}
       />
     </div>
   );

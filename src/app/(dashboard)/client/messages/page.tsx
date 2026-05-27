@@ -1,8 +1,6 @@
 'use client';
-
-import { useQuery }   from '@tanstack/react-query';
-import { ChatBox }    from '@/components/shared/ChatBox';
-import { Card, CardContent } from '@/components/ui/card';
+import { useQuery }      from '@tanstack/react-query';
+import { ChatBox }       from '@/components/shared/ChatBox';
 import { MessageSquare } from 'lucide-react';
 import type { User, Client } from '@/types';
 
@@ -17,37 +15,34 @@ export default function ClientMessagesPage() {
     queryFn:  async () => (await (await fetch('/api/clients')).json()).data ?? [],
   });
 
-  // Find the client record for current user
-  const myClient = clients.find(c => c.email === currentUser?.email);
-
-  // Get assigned account manager as the chat partner
+  const myClient       = clients.find(c => c.email === currentUser?.email);
   const accountManager = myClient?.assignedManager as User | null;
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Messages</h1>
-        <p className="text-muted-foreground text-sm">
-          Chat with your account manager
-        </p>
+    <div className="wm-page-inner">
+
+      {/* Header */}
+      <div style={{ marginBottom: 28 }} className="wm-fade-up">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+          <MessageSquare size={15} style={{ color: '#f472b6' }} />
+          <span style={{ fontSize: '.72rem', color: 'rgba(148,163,184,.5)', textTransform: 'uppercase', letterSpacing: '.06em' }}>Messaging</span>
+        </div>
+        <h1 style={{ fontSize: '1.65rem', fontWeight: 700, color: '#f1f5f9', marginBottom: 4 }}>Messages</h1>
+        <p style={{ fontSize: '.875rem', color: 'rgba(148,163,184,.5)' }}>Chat with your account manager</p>
       </div>
 
+      {/* Content */}
       {!accountManager ? (
-        <Card>
-          <CardContent className="py-16 text-center text-muted-foreground">
-            <MessageSquare className="h-10 w-10 mx-auto mb-3 opacity-30" />
-            <p className="text-lg font-medium">No account manager assigned</p>
-            <p className="text-sm mt-1">
-              Contact us to get an account manager assigned to you
-            </p>
-          </CardContent>
-        </Card>
+        <div className="wm-card" style={{ padding: '60px 24px', textAlign: 'center' }}>
+          <div style={{ width: 52, height: 52, borderRadius: 14, background: 'rgba(244,114,182,.1)', border: '0.5px solid rgba(244,114,182,.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px', color: '#f472b6' }}>
+            <MessageSquare size={22} />
+          </div>
+          <p style={{ color: 'rgba(148,163,184,.4)', fontSize: '.9rem', marginBottom: 4 }}>No account manager assigned</p>
+          <p style={{ color: 'rgba(148,163,184,.25)', fontSize: '.8rem' }}>Contact us to get an account manager assigned to you</p>
+        </div>
       ) : currentUser ? (
-        <div className="h-[calc(100vh-12rem)]">
-          <ChatBox
-            currentUser={currentUser}
-            otherUser={accountManager}
-          />
+        <div className="wm-fade-up-2" style={{ height: 'calc(100vh - 260px)' }}>
+          <ChatBox currentUser={currentUser} otherUser={accountManager} />
         </div>
       ) : null}
     </div>

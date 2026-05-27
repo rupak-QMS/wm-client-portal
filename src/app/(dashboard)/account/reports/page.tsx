@@ -1,11 +1,9 @@
 'use client';
-
 import { useState }                 from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Button }                   from '@/components/ui/button';
 import { ReportCard }               from '@/components/reports/ReportCard';
 import { UploadReportModal }        from '@/components/reports/UploadReportModal';
-import { Upload }                   from 'lucide-react';
+import { Upload, FileText }         from 'lucide-react';
 import type { Report, Client }      from '@/types';
 
 export default function AMReportsPage() {
@@ -23,32 +21,49 @@ export default function AMReportsPage() {
   });
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="wm-page-inner">
+
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 28 }} className="wm-fade-up">
         <div>
-          <h1 className="text-2xl font-bold">Reports</h1>
-          <p className="text-muted-foreground text-sm">Upload and manage client reports</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+            <FileText size={15} style={{ color: '#60a5fa' }} />
+            <span style={{ fontSize: '.72rem', color: 'rgba(148,163,184,.5)', textTransform: 'uppercase', letterSpacing: '.06em' }}>Analytics</span>
+          </div>
+          <h1 style={{ fontSize: '1.65rem', fontWeight: 700, color: '#f1f5f9', marginBottom: 4 }}>Reports</h1>
+          <p style={{ fontSize: '.875rem', color: 'rgba(148,163,184,.5)' }}>Upload and manage client reports</p>
         </div>
-        <Button onClick={() => setShowUpload(true)}>
-          <Upload className="mr-2 h-4 w-4" />
-          Upload Report
-        </Button>
+        <button className="wm-btn-primary" onClick={() => setShowUpload(true)}
+          style={{ display: 'flex', alignItems: 'center', gap: 7, height: 38 }}>
+          <Upload size={15} /> Upload Report
+        </button>
       </div>
+
+      {/* Content */}
       {isLoading ? (
-        <div className="text-center py-10 text-muted-foreground">Loading...</div>
+        <div style={{ textAlign: 'center', padding: '40px', color: 'rgba(148,163,184,.3)' }}>Loading...</div>
       ) : reports.length === 0 ? (
-        <div className="text-center py-16 text-muted-foreground">
-          <p className="text-lg font-medium">No reports yet</p>
-          <p className="text-sm mt-1">Upload your first report</p>
+        <div className="wm-card" style={{ padding: '60px 24px', textAlign: 'center' }}>
+          <div style={{ width: 52, height: 52, borderRadius: 14, background: 'rgba(96,165,250,.1)', border: '0.5px solid rgba(96,165,250,.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px', color: '#60a5fa' }}>
+            <FileText size={22} />
+          </div>
+          <p style={{ color: 'rgba(148,163,184,.4)', fontSize: '.9rem', marginBottom: 4 }}>No reports yet</p>
+          <p style={{ color: 'rgba(148,163,184,.25)', fontSize: '.8rem' }}>Upload your first report to get started</p>
         </div>
       ) : (
-        <div className="space-y-4">
-          {reports.map(report => (
-            <ReportCard key={report.id} report={report} currentUserId="" />
+        <div className="wm-fade-up-2" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {reports.map(r => (
+            <ReportCard key={r.id} report={r} currentUserId="" />
           ))}
         </div>
       )}
-      <UploadReportModal open={showUpload} onClose={() => setShowUpload(false)} onSuccess={() => qc.invalidateQueries({ queryKey: ['reports'] })} clients={clients} />
+
+      <UploadReportModal
+        open={showUpload}
+        onClose={() => setShowUpload(false)}
+        onSuccess={() => qc.invalidateQueries({ queryKey: ['reports'] })}
+        clients={clients}
+      />
     </div>
   );
 }

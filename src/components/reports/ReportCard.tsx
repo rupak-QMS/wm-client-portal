@@ -1,95 +1,111 @@
 'use client';
 
-import { useState }        from 'react';
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge }           from '@/components/ui/badge';
-import { Button }          from '@/components/ui/button';
-import { CommentSection }  from './CommentSection';
+import { useState }       from 'react';
+import { CommentSection } from './CommentSection';
 import { formatTime, formatFileSize } from '@/lib/utils';
 import { FileText, Download, MessageSquare, ChevronDown, ChevronUp } from 'lucide-react';
 import type { Report } from '@/types';
 
-const typeBadgeColor: Record<string, string> = {
-  seo:            'bg-blue-100   text-blue-700   dark:bg-blue-900/30   dark:text-blue-400',
-  website_update: 'bg-green-100  text-green-700  dark:bg-green-900/30  dark:text-green-400',
-  analytics:      'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
-  audit:          'bg-amber-100  text-amber-700  dark:bg-amber-900/30  dark:text-amber-400',
-  other:          'bg-gray-100   text-gray-700   dark:bg-gray-900/30   dark:text-gray-400',
+const TYPE_COLOR: Record<string, { bg: string; color: string }> = {
+  seo:            { bg: 'rgba(96,165,250,.12)',  color: '#60a5fa' },
+  website_update: { bg: 'rgba(52,211,153,.12)',  color: '#34d399' },
+  analytics:      { bg: 'rgba(167,139,250,.12)', color: '#a78bfa' },
+  audit:          { bg: 'rgba(251,191,36,.12)',  color: '#fbbf24' },
+  other:          { bg: 'rgba(148,163,184,.1)',  color: 'rgba(148,163,184,.7)' },
 };
 
-interface Props {
-  report:        Report;
-  currentUserId: string;
-}
+interface Props { report: Report; currentUserId: string; }
 
 export function ReportCard({ report, currentUserId }: Props) {
   const [showComments, setShowComments] = useState(false);
+  const tc = TYPE_COLOR[report.report_type] ?? TYPE_COLOR.other;
 
   return (
-    <Card className="hover:shadow-md transition-shadow">
-      <CardContent className="p-5">
-        <div className="flex items-start gap-4">
-          <div className="p-3 rounded-xl bg-primary/10 text-primary flex-shrink-0">
-            <FileText className="h-5 w-5" />
-          </div>
+    <div className="wm-card" style={{ padding: '18px 20px', transition: 'all .25s' }}
+      onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.transform = 'translateY(-1px)'; }}
+      onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.transform = 'translateY(0)'; }}>
 
-          <div className="flex-1 min-w-0">
-            <div className="flex items-start justify-between gap-2">
-              <div>
-                <h3 className="font-semibold truncate">{report.title}</h3>
-                <p className="text-sm text-muted-foreground">
-                  {report.client?.company_name} · Uploaded by {report.uploader?.full_name}
-                </p>
-              </div>
-              <span className={`text-xs px-2 py-1 rounded-full font-medium flex-shrink-0 ${typeBadgeColor[report.report_type] ?? typeBadgeColor.other}`}>
-                {report.report_type.replace('_', ' ')}
-              </span>
-            </div>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
 
-            {report.description && (
-              <p className="text-sm text-muted-foreground mt-2">{report.description}</p>
-            )}
-
-            <div className="flex items-center gap-4 mt-3">
-              <span className="text-xs text-muted-foreground">
-                {formatTime(report.created_at)}
-              </span>
-              {report.file_size && (
-                <span className="text-xs text-muted-foreground">
-                  {formatFileSize(Number(report.file_size))}
-                </span>
-              )}
-              <div className="flex items-center gap-2 ml-auto">
-                <Button variant="outline" size="sm"
-                  onClick={() => setShowComments(!showComments)}>
-                  <MessageSquare className="h-3.5 w-3.5 mr-1" />
-                  {report.comments?.length ?? 0}
-                  {showComments
-                    ? <ChevronUp className="h-3.5 w-3.5 ml-1" />
-                    : <ChevronDown className="h-3.5 w-3.5 ml-1" />
-                  }
-                </Button>
-                <Button variant="outline" size="sm" asChild>
-                  <a href={report.file_url} target="_blank" rel="noopener noreferrer">
-                    <Download className="h-3.5 w-3.5 mr-1" />
-                    Download
-                  </a>
-                </Button>
-              </div>
-            </div>
-
-            {showComments && (
-              <div className="mt-4 pt-4 border-t border-border">
-                <CommentSection
-                  reportId={report.id}
-                  comments={report.comments ?? []}
-                  currentUserId={currentUserId}
-                />
-              </div>
-            )}
-          </div>
+        {/* file icon */}
+        <div style={{
+          width: 42, height: 42, borderRadius: 11, flexShrink: 0,
+          background: tc.bg, border: `0.5px solid ${tc.color}33`,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          color: tc.color,
+        }}>
+          <FileText size={18} aria-hidden />
         </div>
-      </CardContent>
-    </Card>
+
+        <div style={{ flex: 1, minWidth: 0 }}>
+          {/* title row */}
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10, marginBottom: 4 }}>
+            <div>
+              <h3 style={{ fontSize: '.92rem', fontWeight: 600, color: '#f1f5f9', marginBottom: 2 }}>
+                {report.title}
+              </h3>
+              <p style={{ fontSize: '.78rem', color: 'rgba(148,163,184,.55)' }}>
+                {report.client?.company_name} · Uploaded by {report.uploader?.full_name}
+              </p>
+            </div>
+            <span style={{
+              flexShrink: 0, padding: '3px 10px', borderRadius: 99,
+              fontSize: '.7rem', fontWeight: 500,
+              background: tc.bg, color: tc.color,
+              border: `0.5px solid ${tc.color}44`,
+            }}>
+              {report.report_type.replace('_', ' ')}
+            </span>
+          </div>
+
+          {/* description */}
+          {report.description && (
+            <p style={{ fontSize: '.82rem', color: 'rgba(148,163,184,.5)', marginTop: 6, marginBottom: 4 }}>
+              {report.description}
+            </p>
+          )}
+
+          {/* meta + actions */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 10, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: '.72rem', color: 'rgba(148,163,184,.4)' }}>
+              {formatTime(report.created_at)}
+            </span>
+            {report.file_size && (
+              <span style={{ fontSize: '.72rem', color: 'rgba(148,163,184,.4)' }}>
+                {formatFileSize(Number(report.file_size))}
+              </span>
+            )}
+
+            <div style={{ display: 'flex', gap: 8, marginLeft: 'auto' }}>
+              <button
+                onClick={() => setShowComments(v => !v)}
+                className="wm-btn-ghost"
+                style={{ padding: '5px 12px', fontSize: '.75rem', display: 'flex', alignItems: 'center', gap: 5, height: 'auto' }}>
+                <MessageSquare size={13} />
+                {report.comments?.length ?? 0}
+                {showComments ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+              </button>
+              <a href={report.file_url} target="_blank" rel="noopener noreferrer"
+                className="wm-btn-primary"
+                style={{ padding: '5px 12px', fontSize: '.75rem', display: 'flex', alignItems: 'center', gap: 5, borderRadius: 8, textDecoration: 'none' }}>
+                <Download size={13} />
+                Download
+              </a>
+            </div>
+          </div>
+
+          {/* comments */}
+          {showComments && (
+            <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid rgba(124,58,237,.1)' }}>
+              <CommentSection
+                reportId={report.id}
+                comments={report.comments ?? []}
+                currentUserId={currentUserId}
+              />
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }
