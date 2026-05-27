@@ -7,7 +7,6 @@ import { createClient as createAdminClient } from '@supabase/supabase-js';
 import prisma             from '@/lib/prisma';
 import type { UserRole, CreateUserFormValues } from '@/types';
 
-// Admin client with service role key — can create/delete users
 function getAdminClient() {
   return createAdminClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -33,9 +32,11 @@ export async function loginAction(email: string, password: string) {
   if (!user) return { error: 'Authentication failed' };
 
   const profile = await prisma.user.findUnique({ where: { id: user.id } });
+
   const dashPath =
     profile?.role === 'manager'         ? '/manager/dashboard' :
     profile?.role === 'account_manager' ? '/account/dashboard' :
+    profile?.role === 'sales_team'      ? '/sales/dashboard'   :
                                           '/client/dashboard';
   redirect(dashPath);
 }
