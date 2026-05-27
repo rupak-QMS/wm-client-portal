@@ -1,17 +1,13 @@
 'use client';
-
-import { useState } from 'react';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { useState }      from 'react';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { getInitials, formatTime } from '@/lib/utils';
-import { Trash2, Mail } from 'lucide-react';
-import type { User } from '@/types';
+import { Trash2, Mail }  from 'lucide-react';
+import type { User }     from '@/types';
 
 interface Props {
-  managers: User[];
-  onDelete: (id: string) => void;
+  managers:   User[];
+  onDelete:   (id: string) => void;
   isDeleting: boolean;
 }
 
@@ -20,75 +16,88 @@ export function AMTable({ managers, onDelete, isDeleting }: Props) {
 
   return (
     <>
-      <div className="rounded-xl border border-border overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-muted/50 border-b border-border">
-            <tr>
-              <th className="text-left px-4 py-3 font-medium text-muted-foreground">Name</th>
-              <th className="text-left px-4 py-3 font-medium text-muted-foreground hidden md:table-cell">Email</th>
-              <th className="text-left px-4 py-3 font-medium text-muted-foreground hidden lg:table-cell">Joined</th>
-              <th className="text-left px-4 py-3 font-medium text-muted-foreground">Status</th>
-              <th className="text-right px-4 py-3 font-medium text-muted-foreground">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {managers.length === 0 && (
+      <div className="wm-card" style={{ overflow: 'hidden' }}>
+        <div style={{ overflowX: 'auto' }}>
+          <table className="wm-table">
+            <thead>
               <tr>
-                <td colSpan={5} className="text-center py-10 text-muted-foreground">
-                  No account managers yet
-                </td>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Joined</th>
+                <th>Status</th>
+                <th style={{ textAlign: 'right' }}>Actions</th>
               </tr>
-            )}
-            {managers.map(am => (
-              <tr key={am.id} className="hover:bg-muted/30 transition-colors">
-                <td className="px-4 py-3">
-                  <div className="flex items-center gap-3">
-                    <Avatar className="h-8 w-8">
-                      <AvatarFallback className="text-xs bg-primary/10 text-primary">
+            </thead>
+            <tbody>
+              {managers.length === 0 && (
+                <tr>
+                  <td colSpan={5} style={{ textAlign: 'center', padding: '40px', color: 'rgba(148,163,184,.3)' }}>
+                    No account managers yet
+                  </td>
+                </tr>
+              )}
+              {managers.map(am => (
+                <tr key={am.id}>
+                  <td>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <div style={{
+                        width: 34, height: 34, borderRadius: 9, flexShrink: 0,
+                        background: 'linear-gradient(135deg,rgba(124,58,237,.4),rgba(59,130,246,.4))',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: 12, fontWeight: 700, color: '#f1f5f9',
+                      }}>
                         {getInitials(am.full_name)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <span className="font-medium">{am.full_name}</span>
-                  </div>
-                </td>
-                <td className="px-4 py-3 text-muted-foreground hidden md:table-cell">
-                  <div className="flex items-center gap-1.5">
-                    <Mail className="h-3.5 w-3.5" />
-                    {am.email}
-                  </div>
-                </td>
-                <td className="px-4 py-3 text-muted-foreground hidden lg:table-cell">
-                  {formatTime(am.created_at)}
-                </td>
-                <td className="px-4 py-3">
-                  <Badge variant="secondary" className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
-                    Active
-                  </Badge>
-                </td>
-                <td className="px-4 py-3 text-right">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="text-muted-foreground hover:text-destructive"
-                    onClick={() => setConfirmId(am.id)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                      </div>
+                      <span style={{ fontWeight: 500, color: '#f1f5f9', fontSize: '.87rem' }}>
+                        {am.full_name}
+                      </span>
+                    </div>
+                  </td>
+                  <td>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '.82rem', color: 'rgba(148,163,184,.6)' }}>
+                      <Mail size={12} style={{ flexShrink: 0 }} />
+                      {am.email}
+                    </div>
+                  </td>
+                  <td style={{ fontSize: '.8rem', color: 'rgba(148,163,184,.45)' }}>
+                    {formatTime(am.created_at)}
+                  </td>
+                  <td>
+                    <span style={{
+                      padding: '3px 10px', borderRadius: 99, fontSize: '.7rem', fontWeight: 500,
+                      background: 'rgba(52,211,153,.12)', color: '#34d399',
+                      border: '0.5px solid rgba(52,211,153,.25)',
+                    }}>
+                      Active
+                    </span>
+                  </td>
+                  <td style={{ textAlign: 'right' }}>
+                    <button
+                      onClick={() => setConfirmId(am.id)}
+                      style={{
+                        width: 30, height: 30, borderRadius: 7, border: 'none',
+                        background: 'rgba(255,255,255,.04)', cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        color: 'rgba(148,163,184,.4)', transition: 'all .2s', marginLeft: 'auto',
+                      }}
+                      onMouseEnter={e => { const b = e.currentTarget as HTMLButtonElement; b.style.background = 'rgba(248,113,113,.12)'; b.style.color = '#f87171'; }}
+                      onMouseLeave={e => { const b = e.currentTarget as HTMLButtonElement; b.style.background = 'rgba(255,255,255,.04)'; b.style.color = 'rgba(148,163,184,.4)'; }}
+                    >
+                      <Trash2 size={13} aria-hidden />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <ConfirmDialog
         open={!!confirmId}
         title="Delete Account Manager"
         description="This will permanently delete the account manager. This action cannot be undone."
-        onConfirm={() => {
-          if (confirmId) onDelete(confirmId);
-          setConfirmId(null);
-        }}
+        onConfirm={() => { if (confirmId) onDelete(confirmId); setConfirmId(null); }}
         onCancel={() => setConfirmId(null)}
         loading={isDeleting}
       />
