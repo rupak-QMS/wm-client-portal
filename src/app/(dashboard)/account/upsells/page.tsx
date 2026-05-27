@@ -1,7 +1,7 @@
 'use client';
 import { useState }                          from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+
 import { Plus, Pencil, Trash2, TrendingUp }  from 'lucide-react';
 import { toast }                             from 'sonner';
 import type { Client }                       from '@/types';
@@ -186,73 +186,77 @@ export default function AMUpsellsPage() {
         </div>
       )}
 
-      {/* Modal */}
-      <Dialog open={showModal} onOpenChange={setShowModal}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>{editId ? 'Edit Upsell' : 'Log Upsell'}</DialogTitle>
-            <DialogDescription>Record an upsell deal for a client</DialogDescription>
-          </DialogHeader>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 8 }}>
-            <div>
-              <label style={lblStyle}>Client</label>
-              <select style={selStyle} value={form.client_id} onChange={e => setForm(f => ({ ...f, client_id: e.target.value }))}>
-                <option value="">Select client</option>
-                {clients.map((c: Client) => <option key={c.id} value={c.id}>{c.company_name}</option>)}
-              </select>
-            </div>
-            <div>
-              <label style={lblStyle}>Product / Service</label>
-              <input style={inpStyle} placeholder="e.g. SEO Package" value={form.product_sold} onChange={e => setForm(f => ({ ...f, product_sold: e.target.value }))} />
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+      {/* Custom Modal — no radix */}
+      {showModal && (
+        <div style={{ position:'fixed', inset:0, zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
+          {/* Backdrop */}
+          <div onClick={() => setShowModal(false)} style={{ position:'absolute', inset:0, background:'rgba(0,0,0,.75)', backdropFilter:'blur(6px)' }} />
+          {/* Panel */}
+          <div style={{ position:'relative', zIndex:1, width:'100%', maxWidth:520, maxHeight:'90vh', overflowY:'auto', background:'#0e0e20', border:'1px solid rgba(124,58,237,.3)', borderRadius:18, padding:28, boxShadow:'0 0 60px rgba(124,58,237,.2)' }}>
+            <h2 style={{ fontSize:'1.1rem', fontWeight:700, color:'#f1f5f9', marginBottom:4 }}>{editId ? 'Edit Upsell' : 'Log Upsell'}</h2>
+            <p style={{ fontSize:'.82rem', color:'rgba(148,163,184,.5)', marginBottom:20 }}>Record an upsell deal for a client</p>
+
+            <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
               <div>
-                <label style={lblStyle}>Date</label>
-                <input style={inpStyle} type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} />
-              </div>
-              <div>
-                <label style={lblStyle}>Currency</label>
-                <select style={selStyle} value={form.currency} onChange={e => setForm(f => ({ ...f, currency: e.target.value }))}>
-                  {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
+                <label style={lblStyle}>Client</label>
+                <select style={selStyle} value={form.client_id} onChange={e => setForm(f => ({ ...f, client_id: e.target.value }))}>
+                  <option value="">Select client</option>
+                  {clients.map((c: Client) => <option key={c.id} value={c.id}>{c.company_name}</option>)}
                 </select>
               </div>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
               <div>
-                <label style={lblStyle}>Total Cost</label>
-                <input style={inpStyle} type="number" placeholder="0.00" value={form.total_cost} onChange={e => setForm(f => ({ ...f, total_cost: e.target.value }))} />
+                <label style={lblStyle}>Product / Service</label>
+                <input style={inpStyle} placeholder="e.g. SEO Package" value={form.product_sold} onChange={e => setForm(f => ({ ...f, product_sold: e.target.value }))} />
+              </div>
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+                <div>
+                  <label style={lblStyle}>Date</label>
+                  <input style={inpStyle} type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} />
+                </div>
+                <div>
+                  <label style={lblStyle}>Currency</label>
+                  <select style={selStyle} value={form.currency} onChange={e => setForm(f => ({ ...f, currency: e.target.value }))}>
+                    {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+                <div>
+                  <label style={lblStyle}>Total Cost</label>
+                  <input style={inpStyle} type="number" placeholder="0.00" value={form.total_cost} onChange={e => setForm(f => ({ ...f, total_cost: e.target.value }))} />
+                </div>
+                <div>
+                  <label style={lblStyle}>Upfront Amount</label>
+                  <input style={inpStyle} type="number" placeholder="0.00" value={form.upfront_amount} onChange={e => setForm(f => ({ ...f, upfront_amount: e.target.value }))} />
+                </div>
               </div>
               <div>
-                <label style={lblStyle}>Upfront Amount</label>
-                <input style={inpStyle} type="number" placeholder="0.00" value={form.upfront_amount} onChange={e => setForm(f => ({ ...f, upfront_amount: e.target.value }))} />
+                <label style={lblStyle}>Project Status</label>
+                <select style={selStyle} value={form.project_status} onChange={e => setForm(f => ({ ...f, project_status: e.target.value }))}>
+                  <option value="pending">Pending</option>
+                  <option value="active">Active</option>
+                  <option value="completed">Completed</option>
+                  <option value="cancelled">Cancelled</option>
+                </select>
               </div>
-            </div>
-            <div>
-              <label style={lblStyle}>Project Status</label>
-              <select style={selStyle} value={form.project_status} onChange={e => setForm(f => ({ ...f, project_status: e.target.value }))}>
-                <option value="pending">Pending</option>
-                <option value="active">Active</option>
-                <option value="completed">Completed</option>
-                <option value="cancelled">Cancelled</option>
-              </select>
-            </div>
-            <div>
-              <label style={lblStyle}>Notes</label>
-              <textarea className="wm-input" placeholder="Any additional notes..." value={form.notes}
-                onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
-                rows={3} style={{ height: 'auto', resize: 'none' }} />
-            </div>
-            <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
-              <button className="wm-btn-ghost" onClick={() => setShowModal(false)} style={{ flex: 1, height: 40 }}>Cancel</button>
-              <button className="wm-btn-primary" style={{ flex: 1, height: 40 }}
-                disabled={saveMutation.isPending || !form.client_id || !form.product_sold || !form.date || !form.total_cost}
-                onClick={() => saveMutation.mutate(form)}>
-                {editId ? 'Update' : 'Log Upsell'}
-              </button>
+              <div>
+                <label style={lblStyle}>Notes</label>
+                <textarea placeholder="Any additional notes..." value={form.notes}
+                  onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
+                  rows={3} style={{ ...inpStyle, height:'auto', resize:'none', padding:'10px 12px' }} />
+              </div>
+              <div style={{ display:'flex', gap:10, marginTop:4 }}>
+                <button className="wm-btn-ghost" onClick={() => setShowModal(false)} style={{ flex:1, height:40 }}>Cancel</button>
+                <button className="wm-btn-primary" style={{ flex:1, height:40 }}
+                  disabled={saveMutation.isPending || !form.client_id || !form.product_sold || !form.date || !form.total_cost}
+                  onClick={() => saveMutation.mutate(form)}>
+                  {editId ? 'Update' : 'Log Upsell'}
+                </button>
+              </div>
             </div>
           </div>
-        </DialogContent>
-      </Dialog>
+        </div>
+      )}
     </div>
   );
 }
