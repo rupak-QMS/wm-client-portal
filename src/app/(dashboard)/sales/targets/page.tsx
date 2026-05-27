@@ -41,8 +41,6 @@ export default function SalesTargetsPage() {
 
   return (
     <div className="wm-page-inner">
-
-      {/* Header */}
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:28, flexWrap:'wrap', gap:12 }} className="wm-fade-up">
         <div>
           <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:6 }}>
@@ -67,7 +65,6 @@ export default function SalesTargetsPage() {
         </div>
       ) : (
         <>
-          {/* Progress cards */}
           <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))', gap:16, marginBottom:24 }} className="wm-fade-up">
             {metrics.map(({ label, icon:Icon, achieved:ach, target:tgt, pct, unit, color, suffix }) => (
               <div key={label} className="wm-card" style={{ padding:'22px' }}>
@@ -94,15 +91,14 @@ export default function SalesTargetsPage() {
             ))}
           </div>
 
-          {/* Target details */}
           <div className="wm-card wm-fade-up-2" style={{ padding:'22px 24px' }}>
             <p style={{ fontSize:'.95rem', fontWeight:600, color:'#f1f5f9', marginBottom:16 }}>Target Details — {MONTHS[month-1]} {year}</p>
             <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))', gap:14 }}>
               {[
-                { label:'Clients to Add',    value:`${myTarget.target_clients} clients`,                              color:'#a78bfa' },
-                { label:'Revenue Goal',      value:`${myTarget.currency} ${parseFloat(myTarget.target_revenue).toLocaleString()}`, color:'#34d399' },
-                { label:'Deals to Close',    value:`${myTarget.target_deals} deals`,                                  color:'#60a5fa' },
-                { label:'Conversion Rate',   value:`${stats?.conversion_rate ?? 0}%`,                                 color:'#f472b6' },
+                { label:'Clients to Add',  value:`${myTarget.target_clients} clients`, color:'#a78bfa' },
+                { label:'Revenue Goal',    value:`${myTarget.currency} ${parseFloat(myTarget.target_revenue).toLocaleString()}`, color:'#34d399' },
+                { label:'Deals to Close',  value:`${myTarget.target_deals} deals`,     color:'#60a5fa' },
+                { label:'Conversion Rate', value:`${stats?.conversion_rate ?? 0}%`,    color:'#f472b6' },
               ].map(({ label, value, color }) => (
                 <div key={label} style={{ padding:'14px 16px', borderRadius:11, background:'rgba(255,255,255,.03)', border:'0.5px solid rgba(255,255,255,.06)' }}>
                   <p style={{ fontSize:'.72rem', color:'rgba(148,163,184,.45)', marginBottom:6 }}>{label}</p>

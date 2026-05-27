@@ -6,7 +6,6 @@ import { toast } from 'sonner';
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const NOW    = new Date();
-
 const BADGE_OPTIONS = [
   { value:'gold',            label:'🥇 Gold'             },
   { value:'silver',          label:'🥈 Silver'           },
@@ -16,10 +15,8 @@ const BADGE_OPTIONS = [
   { value:'most_clients',    label:'👥 Most Clients'     },
   { value:'best_conversion', label:'🎯 Best Conversion'  },
 ];
-
 const RANK_COLORS = ['#fbbf24','#94a3b8','#b47c3c'];
 const RANK_ICONS  = ['🥇','🥈','🥉'];
-
 const inpStyle: React.CSSProperties = { width:'100%', height:40, background:'rgba(255,255,255,.04)', border:'1px solid rgba(124,58,237,.18)', borderRadius:9, padding:'0 12px', fontSize:'.85rem', color:'#f1f5f9', outline:'none' };
 const selStyle: React.CSSProperties = { ...inpStyle, cursor:'pointer' };
 const lblStyle: React.CSSProperties = { fontSize:'.75rem', color:'rgba(148,163,184,.55)', textTransform:'uppercase', letterSpacing:'.05em', display:'block', marginBottom:6 };
@@ -40,7 +37,6 @@ export default function SalesAnalyticsPage() {
     queryKey: ['sales-stats', month, year],
     queryFn:  async () => (await (await fetch(`/api/sales-stats?month=${month}&year=${year}`)).json()).data,
   });
-
   const { data: members = [] } = useQuery({
     queryKey: ['sales-members'],
     queryFn:  async () => (await (await fetch('/api/sales-members')).json()).data ?? [],
@@ -49,32 +45,25 @@ export default function SalesAnalyticsPage() {
   const badgeMutation = useMutation({
     mutationFn: async (data: any) => {
       const res  = await fetch('/api/sales-performance', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ ...data, month, year }) });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error);
-      return json.data;
+      const json = await res.json(); if (!res.ok) throw new Error(json.error); return json.data;
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey:['sales-stats'] }); toast.success('Badge awarded!'); setShowBadgeModal(false); setBadgeForm({ sales_member_id:'', badge_type:'gold', note:'' }); },
     onError: (e:Error) => toast.error(e.message),
   });
-
   const noteMutation = useMutation({
     mutationFn: async (data: any) => {
       const res  = await fetch('/api/sales-performance', { method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ ...data, month, year }) });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error);
-      return json.data;
+      const json = await res.json(); if (!res.ok) throw new Error(json.error); return json.data;
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey:['sales-stats'] }); toast.success('Note added!'); setShowNoteModal(false); setNoteForm({ target_user_id:'', note:'', bonus_amount:'', currency:'USD' }); },
     onError: (e:Error) => toast.error(e.message),
   });
 
-  const leaderboard = stats?.leaderboard ?? [];
+  const leaderboard  = stats?.leaderboard ?? [];
   const topPerformer = leaderboard[0];
 
   return (
     <div className="wm-page-inner">
-
-      {/* Header */}
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:24, flexWrap:'wrap', gap:12 }} className="wm-fade-up">
         <div>
           <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:6 }}>
@@ -90,16 +79,11 @@ export default function SalesAnalyticsPage() {
             <span style={{ fontSize:'.88rem', fontWeight:600, color:'#f1f5f9', minWidth:120, textAlign:'center' }}>{MONTHS[month-1]} {year}</span>
             <button onClick={nextMonth} style={{ width:28, height:28, borderRadius:7, border:'none', background:'none', cursor:'pointer', color:'rgba(148,163,184,.6)', display:'flex', alignItems:'center', justifyContent:'center' }}><ChevronRight size={15}/></button>
           </div>
-          <button className="wm-btn-primary" onClick={() => setShowBadgeModal(true)} style={{ display:'flex', alignItems:'center', gap:6, height:38 }}>
-            <Award size={14}/> Award Badge
-          </button>
-          <button className="wm-btn-ghost" onClick={() => setShowNoteModal(true)} style={{ display:'flex', alignItems:'center', gap:6, height:38 }}>
-            <Plus size={14}/> Add Note
-          </button>
+          <button className="wm-btn-primary" onClick={() => setShowBadgeModal(true)} style={{ display:'flex', alignItems:'center', gap:6, height:38 }}><Award size={14}/> Award Badge</button>
+          <button className="wm-btn-ghost" onClick={() => setShowNoteModal(true)} style={{ display:'flex', alignItems:'center', gap:6, height:38 }}><Plus size={14}/> Add Note</button>
         </div>
       </div>
 
-      {/* Summary stats */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(160px,1fr))', gap:14, marginBottom:24 }} className="wm-fade-up">
         {[
           { label:'Total Leads',     value:stats?.total_leads    ?? '—', color:'#60a5fa' },
@@ -116,7 +100,6 @@ export default function SalesAnalyticsPage() {
         ))}
       </div>
 
-      {/* Top performer banner */}
       {topPerformer && topPerformer.approved_leads > 0 && (
         <div style={{ marginBottom:20, padding:'14px 20px', borderRadius:14, background:'linear-gradient(135deg,rgba(251,191,36,.08),rgba(124,58,237,.08))', border:'1px solid rgba(251,191,36,.2)', display:'flex', alignItems:'center', gap:14 }} className="wm-fade-up">
           <div style={{ width:42, height:42, borderRadius:11, background:'rgba(251,191,36,.15)', display:'flex', alignItems:'center', justifyContent:'center', color:'#fbbf24', flexShrink:0, fontSize:'1.2rem' }}>🏆</div>
@@ -131,7 +114,6 @@ export default function SalesAnalyticsPage() {
         </div>
       )}
 
-      {/* Leaderboard */}
       <div className="wm-card wm-fade-up-2" style={{ overflow:'hidden', marginBottom:20 }}>
         <div style={{ padding:'18px 22px', borderBottom:'1px solid rgba(124,58,237,.1)', display:'flex', alignItems:'center', gap:8 }}>
           <Trophy size={15} style={{ color:'#fbbf24' }} />
@@ -142,27 +124,15 @@ export default function SalesAnalyticsPage() {
         ) : (
           <div style={{ overflowX:'auto' }}>
             <table className="wm-table">
-              <thead>
-                <tr>
-                  <th>#</th><th>Sales Member</th>
-                  <th style={{ textAlign:'right' }}>Leads</th>
-                  <th style={{ textAlign:'right' }}>Approved</th>
-                  <th style={{ textAlign:'right' }}>Revenue</th>
-                  <th style={{ minWidth:140 }}>Conversion</th>
-                </tr>
-              </thead>
+              <thead><tr><th>#</th><th>Sales Member</th><th style={{ textAlign:'right' }}>Leads</th><th style={{ textAlign:'right' }}>Approved</th><th style={{ textAlign:'right' }}>Revenue</th><th style={{ minWidth:140 }}>Conversion</th></tr></thead>
               <tbody>
                 {leaderboard.map((r: any, i: number) => {
                   const rankColor = RANK_COLORS[i] ?? 'rgba(148,163,184,.5)';
                   const pct       = r.conversion_rate;
                   const pctColor  = pct >= 70 ? '#34d399' : pct >= 40 ? '#60a5fa' : pct >= 20 ? '#fbbf24' : '#f87171';
                   return (
-                    <tr key={r.member?.id} style={{ background: i === 0 ? 'rgba(251,191,36,.03)' : 'transparent' }}>
-                      <td>
-                        <span style={{ fontSize:i < 3 ? '1.1rem' : '.85rem', color: rankColor }}>
-                          {i < 3 ? RANK_ICONS[i] : i + 1}
-                        </span>
-                      </td>
+                    <tr key={r.member?.id} style={{ background: i===0 ? 'rgba(251,191,36,.03)' : 'transparent' }}>
+                      <td><span style={{ fontSize:i<3?'1.1rem':'.85rem', color:rankColor }}>{i<3?RANK_ICONS[i]:i+1}</span></td>
                       <td>
                         <div style={{ display:'flex', alignItems:'center', gap:10 }}>
                           <div style={{ width:32, height:32, borderRadius:8, background:'linear-gradient(135deg,rgba(124,58,237,.4),rgba(59,130,246,.4))', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:700, color:'#f1f5f9' }}>
@@ -176,9 +146,7 @@ export default function SalesAnalyticsPage() {
                       </td>
                       <td style={{ textAlign:'right', color:'rgba(148,163,184,.7)' }}>{r.total_leads}</td>
                       <td style={{ textAlign:'right', fontWeight:600, color:'#34d399' }}>{r.approved_leads}</td>
-                      <td style={{ textAlign:'right', color:'#a78bfa', fontWeight:600 }}>
-                        {r.revenue > 0 ? `$${r.revenue.toLocaleString()}` : '—'}
-                      </td>
+                      <td style={{ textAlign:'right', color:'#a78bfa', fontWeight:600 }}>{r.revenue>0?`$${r.revenue.toLocaleString()}`:'—'}</td>
                       <td>
                         <div style={{ display:'flex', alignItems:'center', gap:8 }}>
                           <div style={{ flex:1, height:5, borderRadius:99, background:'rgba(255,255,255,.06)', overflow:'hidden', minWidth:60 }}>
@@ -196,7 +164,6 @@ export default function SalesAnalyticsPage() {
         )}
       </div>
 
-      {/* Recent badges */}
       {stats?.badges?.length > 0 && (
         <div className="wm-card wm-fade-up-3" style={{ padding:'22px 24px' }}>
           <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:16 }}>
@@ -213,7 +180,7 @@ export default function SalesAnalyticsPage() {
         </div>
       )}
 
-      {/* Award Badge Modal */}
+      {/* Badge Modal */}
       {showBadgeModal && (
         <div style={{ position:'fixed', inset:0, zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
           <div onClick={() => setShowBadgeModal(false)} style={{ position:'absolute', inset:0, background:'rgba(0,0,0,.75)', backdropFilter:'blur(6px)' }} />
@@ -225,27 +192,23 @@ export default function SalesAnalyticsPage() {
                 <select style={selStyle} value={badgeForm.sales_member_id} onChange={e => setBadgeForm(f=>({...f,sales_member_id:e.target.value}))}>
                   <option value="">Select member</option>
                   {members.map((m:any) => <option key={m.id} value={m.id}>{m.full_name}</option>)}
-                </select>
-              </div>
+                </select></div>
               <div><label style={lblStyle}>Badge Type</label>
                 <select style={selStyle} value={badgeForm.badge_type} onChange={e => setBadgeForm(f=>({...f,badge_type:e.target.value}))}>
                   {BADGE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                </select>
-              </div>
+                </select></div>
               <div><label style={lblStyle}>Note (optional)</label>
-                <input style={inpStyle} value={badgeForm.note} onChange={e => setBadgeForm(f=>({...f,note:e.target.value}))} placeholder="Why are you awarding this?" />
-              </div>
+                <input style={inpStyle} value={badgeForm.note} onChange={e => setBadgeForm(f=>({...f,note:e.target.value}))} placeholder="Why are you awarding this?" /></div>
               <div style={{ display:'flex', gap:10 }}>
                 <button className="wm-btn-ghost" onClick={() => setShowBadgeModal(false)} style={{ flex:1, height:40 }}>Cancel</button>
-                <button className="wm-btn-primary" style={{ flex:1, height:40 }} disabled={badgeMutation.isPending || !badgeForm.sales_member_id}
-                  onClick={() => badgeMutation.mutate(badgeForm)}>Award Badge</button>
+                <button className="wm-btn-primary" style={{ flex:1, height:40 }} disabled={badgeMutation.isPending || !badgeForm.sales_member_id} onClick={() => badgeMutation.mutate(badgeForm)}>Award Badge</button>
               </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* Add Note Modal */}
+      {/* Note Modal */}
       {showNoteModal && (
         <div style={{ position:'fixed', inset:0, zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
           <div onClick={() => setShowNoteModal(false)} style={{ position:'absolute', inset:0, background:'rgba(0,0,0,.75)', backdropFilter:'blur(6px)' }} />
@@ -257,26 +220,19 @@ export default function SalesAnalyticsPage() {
                 <select style={selStyle} value={noteForm.target_user_id} onChange={e => setNoteForm(f=>({...f,target_user_id:e.target.value}))}>
                   <option value="">Select member</option>
                   {members.map((m:any) => <option key={m.id} value={m.id}>{m.full_name}</option>)}
-                </select>
-              </div>
+                </select></div>
               <div><label style={lblStyle}>Note *</label>
-                <textarea style={{ ...inpStyle, height:'auto', resize:'none', padding:'10px 12px' }} rows={3}
-                  value={noteForm.note} onChange={e => setNoteForm(f=>({...f,note:e.target.value}))} placeholder="Performance feedback..." />
-              </div>
+                <textarea style={{ ...inpStyle, height:'auto', resize:'none', padding:'10px 12px' }} rows={3} value={noteForm.note} onChange={e => setNoteForm(f=>({...f,note:e.target.value}))} placeholder="Performance feedback..." /></div>
               <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
-                <div><label style={lblStyle}>Bonus Amount</label>
-                  <input style={inpStyle} type="number" value={noteForm.bonus_amount} onChange={e => setNoteForm(f=>({...f,bonus_amount:e.target.value}))} placeholder="0.00" />
-                </div>
+                <div><label style={lblStyle}>Bonus Amount</label><input style={inpStyle} type="number" value={noteForm.bonus_amount} onChange={e => setNoteForm(f=>({...f,bonus_amount:e.target.value}))} placeholder="0.00" /></div>
                 <div><label style={lblStyle}>Currency</label>
                   <select style={selStyle} value={noteForm.currency} onChange={e => setNoteForm(f=>({...f,currency:e.target.value}))}>
                     {['USD','GBP','EUR','AUD','INR','SGD'].map(c => <option key={c} value={c}>{c}</option>)}
-                  </select>
-                </div>
+                  </select></div>
               </div>
               <div style={{ display:'flex', gap:10 }}>
                 <button className="wm-btn-ghost" onClick={() => setShowNoteModal(false)} style={{ flex:1, height:40 }}>Cancel</button>
-                <button className="wm-btn-primary" style={{ flex:1, height:40 }} disabled={noteMutation.isPending || !noteForm.target_user_id || !noteForm.note}
-                  onClick={() => noteMutation.mutate(noteForm)}>Save Note</button>
+                <button className="wm-btn-primary" style={{ flex:1, height:40 }} disabled={noteMutation.isPending || !noteForm.target_user_id || !noteForm.note} onClick={() => noteMutation.mutate(noteForm)}>Save Note</button>
               </div>
             </div>
           </div>

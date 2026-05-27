@@ -33,8 +33,6 @@ export default function SalesPerformancePage() {
 
   return (
     <div className="wm-page-inner">
-
-      {/* Header */}
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:28, flexWrap:'wrap', gap:12 }} className="wm-fade-up">
         <div>
           <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:6 }}>
@@ -45,17 +43,12 @@ export default function SalesPerformancePage() {
           <p style={{ fontSize:'.875rem', color:'rgba(148,163,184,.5)' }}>Badges, notes and monthly stats</p>
         </div>
         <div style={{ display:'flex', alignItems:'center', gap:6, background:'rgba(255,255,255,.04)', border:'1px solid rgba(124,58,237,.18)', borderRadius:10, padding:'6px 4px' }}>
-          <button onClick={prevMonth} style={{ width:28, height:28, borderRadius:7, border:'none', background:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'rgba(148,163,184,.6)' }}>
-            <ChevronLeft size={15}/>
-          </button>
+          <button onClick={prevMonth} style={{ width:28, height:28, borderRadius:7, border:'none', background:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'rgba(148,163,184,.6)' }}><ChevronLeft size={15}/></button>
           <span style={{ fontSize:'.88rem', fontWeight:600, color:'#f1f5f9', minWidth:120, textAlign:'center' }}>{MONTHS[month-1]} {year}</span>
-          <button onClick={nextMonth} style={{ width:28, height:28, borderRadius:7, border:'none', background:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'rgba(148,163,184,.6)' }}>
-            <ChevronRight size={15}/>
-          </button>
+          <button onClick={nextMonth} style={{ width:28, height:28, borderRadius:7, border:'none', background:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'rgba(148,163,184,.6)' }}><ChevronRight size={15}/></button>
         </div>
       </div>
 
-      {/* Stats */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(160px,1fr))', gap:14, marginBottom:24 }} className="wm-fade-up">
         {[
           { label:'Leads Added',     value:stats?.total_leads    ?? '—', color:'#60a5fa', icon:Users       },
@@ -75,16 +68,13 @@ export default function SalesPerformancePage() {
         ))}
       </div>
 
-      {/* Badges */}
       <div className="wm-card wm-fade-up-2" style={{ padding:'22px 24px', marginBottom:16 }}>
         <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:16 }}>
           <Award size={15} style={{ color:'#fbbf24' }} />
           <p style={{ fontSize:'.95rem', fontWeight:600, color:'#f1f5f9' }}>Badges Earned</p>
         </div>
         {badges.length === 0 ? (
-          <div style={{ textAlign:'center', padding:'30px 0', color:'rgba(148,163,184,.3)', fontSize:'.85rem' }}>
-            No badges yet this month — keep going! 💪
-          </div>
+          <div style={{ textAlign:'center', padding:'30px 0', color:'rgba(148,163,184,.3)', fontSize:'.85rem' }}>No badges yet this month — keep going! 💪</div>
         ) : (
           <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(200px,1fr))', gap:12 }}>
             {badges.map((b: any) => {
@@ -101,25 +91,18 @@ export default function SalesPerformancePage() {
         )}
       </div>
 
-      {/* Manager notes */}
       <div className="wm-card wm-fade-up-3" style={{ padding:'22px 24px' }}>
         <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:16 }}>
           <Award size={15} style={{ color:'#60a5fa' }} />
           <p style={{ fontSize:'.95rem', fontWeight:600, color:'#f1f5f9' }}>Manager Feedback</p>
         </div>
         {notes.length === 0 ? (
-          <div style={{ textAlign:'center', padding:'30px 0', color:'rgba(148,163,184,.3)', fontSize:'.85rem' }}>
-            No feedback yet this month
-          </div>
+          <div style={{ textAlign:'center', padding:'30px 0', color:'rgba(148,163,184,.3)', fontSize:'.85rem' }}>No feedback yet this month</div>
         ) : notes.map((n: any) => (
           <div key={n.id} style={{ padding:'14px 16px', borderRadius:12, background:'rgba(255,255,255,.03)', border:'0.5px solid rgba(255,255,255,.06)', marginBottom:10 }}>
             <div style={{ display:'flex', justifyContent:'space-between', marginBottom:8 }}>
               <span style={{ fontSize:'.75rem', color:'rgba(148,163,184,.45)' }}>From {n.author?.full_name}</span>
-              {n.bonus_amount && (
-                <span style={{ fontSize:'.78rem', fontWeight:600, color:'#34d399' }}>
-                  🎁 Bonus: {n.currency} {parseFloat(n.bonus_amount).toLocaleString()}
-                </span>
-              )}
+              {n.bonus_amount && <span style={{ fontSize:'.78rem', fontWeight:600, color:'#34d399' }}>🎁 Bonus: {n.currency} {parseFloat(n.bonus_amount).toLocaleString()}</span>}
             </div>
             <p style={{ fontSize:'.87rem', color:'#f1f5f9', lineHeight:1.6 }}>{n.note}</p>
           </div>

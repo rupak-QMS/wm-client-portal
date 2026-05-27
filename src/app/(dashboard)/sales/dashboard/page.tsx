@@ -31,7 +31,7 @@ export default function SalesDashboard() {
     queryFn:  async () => (await (await fetch(`/api/sales-targets?month=${month}&year=${year}`)).json()).data ?? [],
   });
 
-  const myTarget = target?.[0];
+  const myTarget   = target?.[0];
   const achieved   = stats?.approved_leads  ?? 0;
   const tClients   = myTarget?.target_clients ?? 0;
   const tRevenue   = myTarget?.target_revenue ?? 0;
@@ -41,8 +41,6 @@ export default function SalesDashboard() {
 
   return (
     <div className="wm-page-inner">
-
-      {/* Header */}
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:28, flexWrap:'wrap', gap:12 }} className="wm-fade-up">
         <div>
           <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:6 }}>
@@ -64,7 +62,6 @@ export default function SalesDashboard() {
         </div>
       </div>
 
-      {/* Stat cards */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))', gap:14, marginBottom:24 }} className="wm-fade-up">
         <StatsCard title="Leads Added"     value={stats?.total_leads    ?? '—'} icon={Users}       color="blue"   />
         <StatsCard title="Approved"        value={stats?.approved_leads ?? '—'} icon={CheckCircle} color="green"  />
@@ -74,7 +71,6 @@ export default function SalesDashboard() {
         <StatsCard title="Conversion Rate" value={`${stats?.conversion_rate ?? 0}%`}            icon={BarChart2}  color="pink"   />
       </div>
 
-      {/* Target progress */}
       {myTarget && (
         <div className="wm-card wm-fade-up-2" style={{ padding:'22px 24px', marginBottom:20 }}>
           <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:18 }}>
@@ -104,7 +100,6 @@ export default function SalesDashboard() {
         </div>
       )}
 
-      {/* Badges */}
       {stats?.badges?.length > 0 && (
         <div className="wm-card wm-fade-up-2" style={{ padding:'22px 24px', marginBottom:20 }}>
           <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:16 }}>
@@ -128,7 +123,6 @@ export default function SalesDashboard() {
         </div>
       )}
 
-      {/* Performance notes */}
       {stats?.performance_notes?.length > 0 && (
         <div className="wm-card wm-fade-up-3" style={{ padding:'22px 24px' }}>
           <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:16 }}>

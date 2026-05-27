@@ -12,11 +12,9 @@ const STATUS_STYLE: Record<string,{bg:string;color:string}> = {
   rejected:         { bg:'rgba(248,113,113,.12)', color:'#f87171' },
   assigned:         { bg:'rgba(96,165,250,.12)',  color:'#60a5fa' },
 };
-
 const inpStyle: React.CSSProperties = { width:'100%', height:40, background:'rgba(255,255,255,.04)', border:'1px solid rgba(124,58,237,.18)', borderRadius:9, padding:'0 12px', fontSize:'.85rem', color:'#f1f5f9', outline:'none' };
 const selStyle: React.CSSProperties = { ...inpStyle, cursor:'pointer' };
 const lblStyle: React.CSSProperties = { fontSize:'.75rem', color:'rgba(148,163,184,.55)', textTransform:'uppercase', letterSpacing:'.05em', display:'block', marginBottom:6 };
-
 const emptyForm = { company_name:'', contact_person:'', email:'', phone:'', website:'', service_required:'', expected_value:'', currency:'USD', sales_stage:'prospecting', notes:'' };
 
 export default function SalesLeadsPage() {
@@ -69,8 +67,6 @@ export default function SalesLeadsPage() {
 
   return (
     <div className="wm-page-inner">
-
-      {/* Header */}
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:28 }} className="wm-fade-up">
         <div>
           <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:6 }}>
@@ -80,19 +76,16 @@ export default function SalesLeadsPage() {
           <h1 style={{ fontSize:'1.65rem', fontWeight:700, color:'#f1f5f9', marginBottom:4 }}>My Leads</h1>
           <p style={{ fontSize:'.875rem', color:'rgba(148,163,184,.5)' }}>Manage and submit leads for approval</p>
         </div>
-        <button className="wm-btn-primary" onClick={() => { setEditId(null); setForm({ ...emptyForm }); setShowModal(true); }}
-          style={{ display:'flex', alignItems:'center', gap:7, height:38 }}>
+        <button className="wm-btn-primary" onClick={() => { setEditId(null); setForm({ ...emptyForm }); setShowModal(true); }} style={{ display:'flex', alignItems:'center', gap:7, height:38 }}>
           <Plus size={15}/> Add Lead
         </button>
       </div>
 
-      {/* Search */}
       <div style={{ position:'relative', marginBottom:20 }} className="wm-fade-up">
         <Search size={14} style={{ position:'absolute', left:12, top:'50%', transform:'translateY(-50%)', color:'rgba(148,163,184,.35)', pointerEvents:'none' }} />
         <input className="wm-input" style={{ paddingLeft:36, height:40 }} placeholder="Search leads..." value={search} onChange={e => setSearch(e.target.value)} />
       </div>
 
-      {/* Leads grid */}
       {isLoading ? (
         <div style={{ textAlign:'center', padding:'40px', color:'rgba(148,163,184,.3)' }}>Loading...</div>
       ) : filtered.length === 0 ? (
@@ -111,12 +104,8 @@ export default function SalesLeadsPage() {
                   <div style={{ flex:1, minWidth:0 }}>
                     <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:6, flexWrap:'wrap' }}>
                       <p style={{ fontWeight:600, color:'#f1f5f9', fontSize:'.92rem' }}>{l.company_name}</p>
-                      <span style={{ padding:'2px 9px', borderRadius:99, fontSize:'.7rem', fontWeight:500, background:st.bg, color:st.color, textTransform:'capitalize' }}>
-                        {l.status.replace(/_/g,' ')}
-                      </span>
-                      <span style={{ padding:'2px 9px', borderRadius:99, fontSize:'.7rem', background:'rgba(255,255,255,.04)', color:'rgba(148,163,184,.5)', textTransform:'capitalize' }}>
-                        {l.sales_stage}
-                      </span>
+                      <span style={{ padding:'2px 9px', borderRadius:99, fontSize:'.7rem', fontWeight:500, background:st.bg, color:st.color, textTransform:'capitalize' }}>{l.status.replace(/_/g,' ')}</span>
+                      <span style={{ padding:'2px 9px', borderRadius:99, fontSize:'.7rem', background:'rgba(255,255,255,.04)', color:'rgba(148,163,184,.5)', textTransform:'capitalize' }}>{l.sales_stage}</span>
                     </div>
                     <div style={{ display:'flex', gap:16, flexWrap:'wrap', fontSize:'.78rem', color:'rgba(148,163,184,.55)' }}>
                       <span>{l.contact_person}</span>
@@ -127,17 +116,14 @@ export default function SalesLeadsPage() {
                   </div>
                   <div style={{ display:'flex', gap:6, flexShrink:0 }}>
                     {['draft','pending_approval'].includes(l.status) && (
-                      <button className="wm-btn-ghost" onClick={() => openEdit(l)}
-                        style={{ padding:'5px 12px', fontSize:'.75rem', height:'auto' }}>Edit</button>
+                      <button className="wm-btn-ghost" onClick={() => openEdit(l)} style={{ padding:'5px 12px', fontSize:'.75rem', height:'auto' }}>Edit</button>
                     )}
                     {l.status === 'draft' && (
-                      <button className="wm-btn-primary" onClick={() => submitMutation.mutate(l.id)}
-                        style={{ padding:'5px 12px', fontSize:'.75rem', height:'auto', display:'flex', alignItems:'center', gap:5 }}>
+                      <button className="wm-btn-primary" onClick={() => submitMutation.mutate(l.id)} style={{ padding:'5px 12px', fontSize:'.75rem', height:'auto', display:'flex', alignItems:'center', gap:5 }}>
                         Submit <ArrowUpRight size={12}/>
                       </button>
                     )}
-                    <button className="wm-btn-ghost" onClick={() => setSelected(l)}
-                      style={{ padding:'5px 10px', fontSize:'.75rem', height:'auto' }}>
+                    <button className="wm-btn-ghost" onClick={() => setSelected(l)} style={{ padding:'5px 10px', fontSize:'.75rem', height:'auto' }}>
                       <FileText size={13}/>
                     </button>
                   </div>
@@ -148,7 +134,7 @@ export default function SalesLeadsPage() {
         </div>
       )}
 
-      {/* Lead detail panel */}
+      {/* Detail panel */}
       {selected && (
         <div style={{ position:'fixed', inset:0, zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
           <div onClick={() => setSelected(null)} style={{ position:'absolute', inset:0, background:'rgba(0,0,0,.75)', backdropFilter:'blur(6px)' }} />

@@ -11,19 +11,18 @@ const STATUS_STYLE: Record<string,{bg:string;color:string}> = {
   assigned:         { bg:'rgba(96,165,250,.12)',  color:'#60a5fa' },
   draft:            { bg:'rgba(148,163,184,.1)',  color:'rgba(148,163,184,.6)' },
 };
-
 const inpStyle: React.CSSProperties = { width:'100%', height:40, background:'rgba(255,255,255,.04)', border:'1px solid rgba(124,58,237,.18)', borderRadius:9, padding:'0 12px', fontSize:'.85rem', color:'#f1f5f9', outline:'none' };
 const selStyle: React.CSSProperties = { ...inpStyle, cursor:'pointer' };
 const lblStyle: React.CSSProperties = { fontSize:'.75rem', color:'rgba(148,163,184,.55)', textTransform:'uppercase', letterSpacing:'.05em', display:'block', marginBottom:6 };
 
 export default function SalesApprovalsPage() {
   const qc = useQueryClient();
-  const [selected,       setSelected]       = useState<any>(null);
-  const [actionModal,    setActionModal]     = useState<'approve'|'reject'|'assign'|'note'|null>(null);
-  const [rejectionReason, setRejectionReason] = useState('');
-  const [managerNote,    setManagerNote]     = useState('');
-  const [assignedAM,     setAssignedAM]      = useState('');
-  const [filterStatus,   setFilterStatus]    = useState('pending_approval');
+  const [selected,        setSelected]        = useState<any>(null);
+  const [actionModal,     setActionModal]      = useState<'approve'|'reject'|'assign'|'note'|null>(null);
+  const [rejectionReason, setRejectionReason]  = useState('');
+  const [managerNote,     setManagerNote]      = useState('');
+  const [assignedAM,      setAssignedAM]       = useState('');
+  const [filterStatus,    setFilterStatus]     = useState('pending_approval');
 
   const { data: leads = [], isLoading } = useQuery({
     queryKey: ['sales-leads', filterStatus],
@@ -51,13 +50,10 @@ export default function SalesApprovalsPage() {
     onError: (e:Error) => toast.error(e.message),
   });
 
-  const pending  = leads.filter((l:any) => l.status === 'pending_approval');
-  const reviewed = leads.filter((l:any) => l.status !== 'pending_approval');
+  const pending = leads.filter((l:any) => l.status === 'pending_approval');
 
   return (
     <div className="wm-page-inner">
-
-      {/* Header */}
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:28, flexWrap:'wrap', gap:12 }} className="wm-fade-up">
         <div>
           <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:6 }}>
@@ -76,7 +72,6 @@ export default function SalesApprovalsPage() {
         </select>
       </div>
 
-      {/* Pending count badge */}
       {pending.length > 0 && (
         <div style={{ display:'flex', alignItems:'center', gap:10, padding:'12px 16px', borderRadius:12, background:'rgba(251,191,36,.06)', border:'0.5px solid rgba(251,191,36,.2)', marginBottom:20 }} className="wm-fade-up">
           <Clock size={15} style={{ color:'#fbbf24' }} />
@@ -107,18 +102,11 @@ export default function SalesApprovalsPage() {
                     <div style={{ flex:1, minWidth:0 }}>
                       <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4, flexWrap:'wrap' }}>
                         <p style={{ fontWeight:600, color:'#f1f5f9', fontSize:'.92rem' }}>{l.company_name}</p>
-                        <span style={{ padding:'2px 9px', borderRadius:99, fontSize:'.7rem', fontWeight:500, background:st.bg, color:st.color, textTransform:'capitalize' }}>
-                          {l.status.replace(/_/g,' ')}
-                        </span>
-                        {l.expected_value && (
-                          <span style={{ fontSize:'.75rem', color:'#34d399', fontWeight:600 }}>
-                            ${parseFloat(l.expected_value).toLocaleString()} est.
-                          </span>
-                        )}
+                        <span style={{ padding:'2px 9px', borderRadius:99, fontSize:'.7rem', fontWeight:500, background:st.bg, color:st.color, textTransform:'capitalize' }}>{l.status.replace(/_/g,' ')}</span>
+                        {l.expected_value && <span style={{ fontSize:'.75rem', color:'#34d399', fontWeight:600 }}>${parseFloat(l.expected_value).toLocaleString()} est.</span>}
                       </div>
                       <div style={{ display:'flex', gap:14, flexWrap:'wrap', fontSize:'.78rem', color:'rgba(148,163,184,.55)' }}>
-                        <span>{l.contact_person}</span>
-                        <span>{l.email}</span>
+                        <span>{l.contact_person}</span><span>{l.email}</span>
                         {l.phone && <span>{l.phone}</span>}
                         {l.service_required && <span>· {l.service_required}</span>}
                       </div>
@@ -127,13 +115,9 @@ export default function SalesApprovalsPage() {
                         <span>Stage: {l.sales_stage}</span>
                         {l.assignedAM && <span style={{ color:'#60a5fa' }}>AM: {l.assignedAM?.full_name}</span>}
                       </div>
-                      {l.rejection_reason && (
-                        <p style={{ fontSize:'.75rem', color:'#f87171', marginTop:4 }}>Rejected: {l.rejection_reason}</p>
-                      )}
+                      {l.rejection_reason && <p style={{ fontSize:'.75rem', color:'#f87171', marginTop:4 }}>Rejected: {l.rejection_reason}</p>}
                     </div>
                   </div>
-
-                  {/* Actions */}
                   <div style={{ display:'flex', gap:6, flexShrink:0, flexWrap:'wrap', justifyContent:'flex-end' }}>
                     {l.status === 'pending_approval' && (<>
                       <button className="wm-btn-ghost" onClick={() => { setSelected(l); setActionModal('reject'); }}
@@ -151,8 +135,7 @@ export default function SalesApprovalsPage() {
                         <UserCheck size={13}/> Assign AM
                       </button>
                     )}
-                    <button className="wm-btn-ghost" onClick={() => { setSelected(l); setActionModal('note'); }}
-                      style={{ padding:'6px 10px', fontSize:'.75rem' }}>
+                    <button className="wm-btn-ghost" onClick={() => { setSelected(l); setActionModal('note'); }} style={{ padding:'6px 10px', fontSize:'.75rem' }}>
                       <MessageSquare size={13}/>
                     </button>
                   </div>
@@ -168,51 +151,35 @@ export default function SalesApprovalsPage() {
         <div style={{ position:'fixed', inset:0, zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
           <div onClick={() => { setActionModal(null); setSelected(null); }} style={{ position:'absolute', inset:0, background:'rgba(0,0,0,.75)', backdropFilter:'blur(6px)' }} />
           <div style={{ position:'relative', zIndex:1, width:'100%', maxWidth:460, background:'#0e0e20', border:'1px solid rgba(124,58,237,.3)', borderRadius:18, padding:28 }}>
-
             {actionModal === 'approve' && (<>
               <h2 style={{ fontSize:'1.05rem', fontWeight:700, color:'#f1f5f9', marginBottom:4 }}>Approve Lead</h2>
-              <p style={{ fontSize:'.82rem', color:'rgba(148,163,184,.5)', marginBottom:16 }}>
-                Approve <strong style={{ color:'#f1f5f9' }}>{selected.company_name}</strong>?
-              </p>
+              <p style={{ fontSize:'.82rem', color:'rgba(148,163,184,.5)', marginBottom:16 }}>Approve <strong style={{ color:'#f1f5f9' }}>{selected.company_name}</strong>?</p>
               <div style={{ marginBottom:16 }}>
                 <label style={lblStyle}>Internal Note (optional)</label>
-                <textarea style={{ ...inpStyle, height:'auto', resize:'none', padding:'10px 12px' }} rows={3}
-                  value={managerNote} onChange={e => setManagerNote(e.target.value)} placeholder="Add a note for the account manager..." />
+                <textarea style={{ ...inpStyle, height:'auto', resize:'none', padding:'10px 12px' }} rows={3} value={managerNote} onChange={e => setManagerNote(e.target.value)} placeholder="Add a note for the account manager..." />
               </div>
               <div style={{ display:'flex', gap:10 }}>
                 <button className="wm-btn-ghost" onClick={() => setActionModal(null)} style={{ flex:1, height:40 }}>Cancel</button>
                 <button className="wm-btn-primary" style={{ flex:1, height:40, background:'linear-gradient(135deg,#059669,#10b981)' }}
-                  onClick={() => reviewMutation.mutate({ id:selected.id, status:'approved', manager_notes:managerNote })}>
-                  Approve
-                </button>
+                  onClick={() => reviewMutation.mutate({ id:selected.id, status:'approved', manager_notes:managerNote })}>Approve</button>
               </div>
             </>)}
-
             {actionModal === 'reject' && (<>
               <h2 style={{ fontSize:'1.05rem', fontWeight:700, color:'#f1f5f9', marginBottom:4 }}>Reject Lead</h2>
-              <p style={{ fontSize:'.82rem', color:'rgba(148,163,184,.5)', marginBottom:16 }}>
-                Rejecting <strong style={{ color:'#f1f5f9' }}>{selected.company_name}</strong>
-              </p>
+              <p style={{ fontSize:'.82rem', color:'rgba(148,163,184,.5)', marginBottom:16 }}>Rejecting <strong style={{ color:'#f1f5f9' }}>{selected.company_name}</strong></p>
               <div style={{ marginBottom:16 }}>
                 <label style={lblStyle}>Reason for Rejection *</label>
-                <textarea style={{ ...inpStyle, height:'auto', resize:'none', padding:'10px 12px' }} rows={3}
-                  value={rejectionReason} onChange={e => setRejectionReason(e.target.value)} placeholder="Why is this lead being rejected?" />
+                <textarea style={{ ...inpStyle, height:'auto', resize:'none', padding:'10px 12px' }} rows={3} value={rejectionReason} onChange={e => setRejectionReason(e.target.value)} placeholder="Why is this lead being rejected?" />
               </div>
               <div style={{ display:'flex', gap:10 }}>
                 <button className="wm-btn-ghost" onClick={() => setActionModal(null)} style={{ flex:1, height:40 }}>Cancel</button>
                 <button style={{ flex:1, height:40, border:'none', borderRadius:10, background:'linear-gradient(135deg,#dc2626,#ef4444)', color:'#fff', fontSize:'.88rem', fontWeight:600, cursor:'pointer' }}
-                  disabled={!rejectionReason}
-                  onClick={() => reviewMutation.mutate({ id:selected.id, status:'rejected', rejection_reason:rejectionReason })}>
-                  Reject Lead
-                </button>
+                  disabled={!rejectionReason} onClick={() => reviewMutation.mutate({ id:selected.id, status:'rejected', rejection_reason:rejectionReason })}>Reject Lead</button>
               </div>
             </>)}
-
             {actionModal === 'assign' && (<>
               <h2 style={{ fontSize:'1.05rem', fontWeight:700, color:'#f1f5f9', marginBottom:4 }}>Assign Account Manager</h2>
-              <p style={{ fontSize:'.82rem', color:'rgba(148,163,184,.5)', marginBottom:16 }}>
-                Assign an AM to <strong style={{ color:'#f1f5f9' }}>{selected.company_name}</strong>
-              </p>
+              <p style={{ fontSize:'.82rem', color:'rgba(148,163,184,.5)', marginBottom:16 }}>Assign an AM to <strong style={{ color:'#f1f5f9' }}>{selected.company_name}</strong></p>
               <div style={{ marginBottom:16 }}>
                 <label style={lblStyle}>Account Manager *</label>
                 <select style={selStyle} value={assignedAM} onChange={e => setAssignedAM(e.target.value)}>
@@ -223,28 +190,20 @@ export default function SalesApprovalsPage() {
               <div style={{ display:'flex', gap:10 }}>
                 <button className="wm-btn-ghost" onClick={() => setActionModal(null)} style={{ flex:1, height:40 }}>Cancel</button>
                 <button className="wm-btn-primary" style={{ flex:1, height:40 }} disabled={!assignedAM}
-                  onClick={() => reviewMutation.mutate({ id:selected.id, assigned_am:assignedAM })}>
-                  Assign AM
-                </button>
+                  onClick={() => reviewMutation.mutate({ id:selected.id, assigned_am:assignedAM })}>Assign AM</button>
               </div>
             </>)}
-
             {actionModal === 'note' && (<>
               <h2 style={{ fontSize:'1.05rem', fontWeight:700, color:'#f1f5f9', marginBottom:4 }}>Add Note</h2>
-              <p style={{ fontSize:'.82rem', color:'rgba(148,163,184,.5)', marginBottom:16 }}>
-                Add internal note for <strong style={{ color:'#f1f5f9' }}>{selected.company_name}</strong>
-              </p>
+              <p style={{ fontSize:'.82rem', color:'rgba(148,163,184,.5)', marginBottom:16 }}>Add internal note for <strong style={{ color:'#f1f5f9' }}>{selected.company_name}</strong></p>
               <div style={{ marginBottom:16 }}>
                 <label style={lblStyle}>Note *</label>
-                <textarea style={{ ...inpStyle, height:'auto', resize:'none', padding:'10px 12px' }} rows={4}
-                  value={managerNote} onChange={e => setManagerNote(e.target.value)} placeholder="Internal note..." />
+                <textarea style={{ ...inpStyle, height:'auto', resize:'none', padding:'10px 12px' }} rows={4} value={managerNote} onChange={e => setManagerNote(e.target.value)} placeholder="Internal note..." />
               </div>
               <div style={{ display:'flex', gap:10 }}>
                 <button className="wm-btn-ghost" onClick={() => setActionModal(null)} style={{ flex:1, height:40 }}>Cancel</button>
                 <button className="wm-btn-primary" style={{ flex:1, height:40 }} disabled={!managerNote}
-                  onClick={() => reviewMutation.mutate({ id:selected.id, manager_notes:managerNote })}>
-                  Save Note
-                </button>
+                  onClick={() => reviewMutation.mutate({ id:selected.id, manager_notes:managerNote })}>Save Note</button>
               </div>
             </>)}
           </div>
