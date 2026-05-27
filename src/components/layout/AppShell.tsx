@@ -30,7 +30,12 @@ const NAV_ACCOUNT = [
   { href: '/account/chat',      icon: MessageSquare,   label: 'Chat'       },
 ];
 
-const NAV_CLIENT = [
+const NAV_SALES = [
+  { href: '/sales/dashboard',   icon: LayoutDashboard, label: 'Dashboard'   },
+  { href: '/sales/leads',       icon: Users,           label: 'My Leads'    },
+  { href: '/sales/targets',     icon: Target,          label: 'My Targets'  },
+  { href: '/sales/performance', icon: TrendingUp,      label: 'Performance' },
+];
   { href: '/client/dashboard',  icon: LayoutDashboard, label: 'Dashboard' },
   { href: '/client/reports',    icon: FileText,        label: 'Reports'   },
   { href: '/client/messages',   icon: MessageSquare,   label: 'Messages'  },
@@ -46,10 +51,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   const nav = pathname.startsWith('/manager') ? NAV_MANAGER
             : pathname.startsWith('/account')  ? NAV_ACCOUNT
+            : pathname.startsWith('/sales')    ? NAV_SALES
             : NAV_CLIENT;
 
   const roleLabel = pathname.startsWith('/manager') ? 'MANAGER'
                   : pathname.startsWith('/account')  ? 'ACCOUNT MGR'
+                  : pathname.startsWith('/sales')    ? 'SALES TEAM'
                   : 'CLIENT';
 
   const handleLogout = async () => {
