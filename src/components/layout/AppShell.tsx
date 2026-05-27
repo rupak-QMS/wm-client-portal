@@ -86,7 +86,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       {open && (
         <div onClick={() => setOpen(false)} style={{
           position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)',
-          zIndex: 49, backdropFilter: 'blur(4px)',
+          zIndex: 49, backdropFilter: 'blur(4px)', pointerEvents: 'auto',
         }} />
       )}
 

@@ -273,6 +273,12 @@ body { font-family: var(--font-sans, system-ui, sans-serif); background: #06060f
   color: rgba(148,163,184,.55) !important;
 }
 
+/* ── Pointer events fix ────────────────── */
+.wm-grid-bg,
+.wm-orb {
+  pointer-events: none !important;
+}
+
 /* ── Divider ───────────────────────────── */
 .wm-divider {
   height: 1px;
