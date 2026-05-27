@@ -7,7 +7,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import {
   ArrowLeft, Building2, Mail, Phone, Globe,
   User, FileText, TrendingUp, Calendar,
-  Plus, Pencil, Trash2, Download,
+  Plus, Pencil, Trash2, Download, Phone as PhoneIcon,
+  Users, ChevronDown, ChevronUp,
 } from 'lucide-react';
 import { formatTime } from '@/lib/utils';
 import { toast }      from 'sonner';
@@ -31,6 +32,15 @@ const REPORT_TYPE: Record<string, { bg: string; color: string }> = {
   audit:          { bg: 'rgba(251,191,36,.12)',  color: '#fbbf24' },
   other:          { bg: 'rgba(148,163,184,.1)',  color: 'rgba(148,163,184,.6)' },
 };
+const LOG_TYPE: Record<string, { bg: string; color: string; label: string }> = {
+  call_log:       { bg: 'rgba(96,165,250,.12)',  color: '#60a5fa', label: 'Call Log'       },
+  meeting_notes:  { bg: 'rgba(167,139,250,.12)', color: '#a78bfa', label: 'Meeting Notes'  },
+  proposal:       { bg: 'rgba(52,211,153,.12)',  color: '#34d399', label: 'Proposal'       },
+  follow_up:      { bg: 'rgba(251,191,36,.12)',  color: '#fbbf24', label: 'Follow Up'      },
+  revenue_update: { bg: 'rgba(244,114,182,.12)', color: '#f472b6', label: 'Revenue Update' },
+  closing_update: { bg: 'rgba(52,211,153,.12)',  color: '#34d399', label: 'Closing Update' },
+  other:          { bg: 'rgba(148,163,184,.1)',  color: 'rgba(148,163,184,.6)', label: 'Other' },
+};
 
 const CURRENCIES = ['USD','GBP','EUR','AUD','INR','SGD'];
 const emptyUpsell = { client_id:'', date:'', product_sold:'', total_cost:'', upfront_amount:'', project_status:'pending', currency:'USD', notes:'' };
@@ -47,11 +57,24 @@ export function ClientProfile({ clientId, canEdit, backHref }: Props) {
   const [showUpsellModal, setShowUpsellModal] = useState(false);
   const [editUpsellId,    setEditUpsellId]    = useState<string | null>(null);
   const [upsellForm,      setUpsellForm]      = useState({ ...emptyUpsell });
-  const [activeTab,       setActiveTab]       = useState<'overview'|'upsells'|'reports'>('overview');
+  const [activeTab,       setActiveTab]       = useState<'overview'|'upsells'|'reports'|'sales_history'>('overview');
+  const [expandedLog,     setExpandedLog]     = useState<string|null>(null);
 
   const { data: client, isLoading } = useQuery({ queryKey:['client',clientId], queryFn: async () => (await (await fetch(`/api/clients/${clientId}`)).json()).data, enabled:!!clientId });
   const { data: reports = [] }      = useQuery({ queryKey:['reports',clientId], queryFn: async () => (await (await fetch(`/api/reports?client_id=${clientId}`)).json()).data ?? [], enabled:!!clientId });
   const { data: upsells = [] }      = useQuery({ queryKey:['upsells',clientId], queryFn: async () => (await (await fetch(`/api/upsells?client_id=${clientId}`)).json()).data ?? [], enabled:!!clientId });
+
+  // Fetch sales lead + logs if this client came from sales team
+  const { data: salesLead } = useQuery({
+    queryKey: ['sales-lead-for-client', clientId],
+    queryFn:  async () => {
+      if (!client?.sales_lead_id) return null;
+      const res = await fetch(`/api/sales-leads?id=${client.sales_lead_id}`);
+      const json = await res.json();
+      return json.data?.[0] ?? null;
+    },
+    enabled: !!client?.sales_lead_id,
+  });
 
   const totalRevenue = upsells.reduce((s:number,u:any) => s + parseFloat(u.total_cost||0), 0);
   const totalUpfront = upsells.reduce((s:number,u:any) => s + parseFloat(u.upfront_amount||0), 0);
@@ -84,11 +107,20 @@ export function ClientProfile({ clientId, canEdit, backHref }: Props) {
   if (!client)   return <div style={{ textAlign:'center', padding:'80px', color:'rgba(148,163,184,.3)' }}>Client not found</div>;
 
   const cst = CLIENT_STATUS[client.status] ?? CLIENT_STATUS.inactive;
+  const salesLogs = salesLead?.logs ?? [];
+  const hasSalesHistory = !!client.sales_lead_id;
+
+  const tabs: Array<{key: 'overview'|'upsells'|'reports'|'sales_history'; label: string; count?: number}> = [
+    { key:'overview',       label:'Overview' },
+    { key:'upsells',        label:'Upsells',       count: upsells.length  },
+    { key:'reports',        label:'Reports',        count: reports.length  },
+    ...(hasSalesHistory ? [{ key:'sales_history' as const, label:'Sales History', count: salesLogs.length }] : []),
+  ];
 
   return (
     <div className="wm-page-inner">
 
-      {/* ── Header ── */}
+      {/* Header */}
       <div style={{ display:'flex', alignItems:'center', gap:14, marginBottom:28 }} className="wm-fade-up">
         <button onClick={() => router.push(backHref)} style={{ width:36, height:36, borderRadius:9, border:'none', background:'rgba(255,255,255,.05)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'rgba(148,163,184,.6)', flexShrink:0, transition:'all .2s' }}
           onMouseEnter={e => { const b=e.currentTarget as HTMLButtonElement; b.style.background='rgba(124,58,237,.12)'; b.style.color='#a78bfa'; }}
@@ -99,6 +131,11 @@ export function ClientProfile({ clientId, canEdit, backHref }: Props) {
           <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap', marginBottom:4 }}>
             <h1 style={{ fontSize:'1.65rem', fontWeight:700, color:'#f1f5f9' }}>{client.company_name}</h1>
             <span style={{ padding:'3px 10px', borderRadius:99, fontSize:'.72rem', fontWeight:500, background:cst.bg, color:cst.color, textTransform:'capitalize' }}>{client.status}</span>
+            {hasSalesHistory && (
+              <span style={{ padding:'3px 10px', borderRadius:99, fontSize:'.7rem', background:'rgba(244,114,182,.1)', color:'#f472b6', border:'0.5px solid rgba(244,114,182,.2)' }}>
+                🎯 From Sales Team
+              </span>
+            )}
           </div>
           <p style={{ fontSize:'.83rem', color:'rgba(148,163,184,.5)' }}>
             Account Manager: <span style={{ color:'rgba(148,163,184,.8)', fontWeight:500 }}>{client.assignedManager?.full_name ?? 'Unassigned'}</span>
@@ -106,7 +143,7 @@ export function ClientProfile({ clientId, canEdit, backHref }: Props) {
         </div>
       </div>
 
-      {/* ── Stat cards ── */}
+      {/* Stat cards */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))', gap:14, marginBottom:24 }} className="wm-fade-up">
         {[
           { label:'Total Revenue',  value:`$${totalRevenue.toLocaleString()}`, color:'#a78bfa' },
@@ -121,22 +158,19 @@ export function ClientProfile({ clientId, canEdit, backHref }: Props) {
         ))}
       </div>
 
-      {/* ── Tabs ── */}
+      {/* Tabs */}
       <div style={{ display:'flex', gap:4, borderBottom:'1px solid rgba(124,58,237,.12)', marginBottom:20 }} className="wm-fade-up-2">
-        {(['overview','upsells','reports'] as const).map(tab => (
-          <button key={tab} onClick={() => setActiveTab(tab)} style={{
+        {tabs.map(tab => (
+          <button key={tab.key} onClick={() => setActiveTab(tab.key)} style={{
             padding:'9px 16px', border:'none', background:'none', cursor:'pointer',
             fontSize:'.83rem', fontWeight:500, textTransform:'capitalize',
-            color: activeTab===tab ? '#a78bfa' : 'rgba(148,163,184,.5)',
-            borderBottom: activeTab===tab ? '2px solid #a78bfa' : '2px solid transparent',
+            color: activeTab===tab.key ? '#a78bfa' : 'rgba(148,163,184,.5)',
+            borderBottom: activeTab===tab.key ? '2px solid #a78bfa' : '2px solid transparent',
             transition:'all .2s', display:'flex', alignItems:'center', gap:6,
           }}>
-            {tab}
-            {tab==='upsells' && upsells.length > 0 && (
-              <span style={{ padding:'1px 7px', borderRadius:99, fontSize:'.68rem', background:'rgba(167,139,250,.15)', color:'#a78bfa' }}>{upsells.length}</span>
-            )}
-            {tab==='reports' && reports.length > 0 && (
-              <span style={{ padding:'1px 7px', borderRadius:99, fontSize:'.68rem', background:'rgba(96,165,250,.15)', color:'#60a5fa' }}>{reports.length}</span>
+            {tab.label}
+            {tab.count !== undefined && tab.count > 0 && (
+              <span style={{ padding:'1px 7px', borderRadius:99, fontSize:'.68rem', background: tab.key==='sales_history' ? 'rgba(244,114,182,.15)' : 'rgba(167,139,250,.15)', color: tab.key==='sales_history' ? '#f472b6' : '#a78bfa' }}>{tab.count}</span>
             )}
           </button>
         ))}
@@ -198,7 +232,6 @@ export function ClientProfile({ clientId, canEdit, backHref }: Props) {
               </button>
             )}
           </div>
-
           {upsells.length === 0 ? (
             <div className="wm-card" style={{ padding:'60px 24px', textAlign:'center' }}>
               <TrendingUp size={36} style={{ color:'rgba(148,163,184,.15)', margin:'0 auto 12px', display:'block' }} />
@@ -218,7 +251,6 @@ export function ClientProfile({ clientId, canEdit, backHref }: Props) {
                         </div>
                         <p style={{ fontSize:'.75rem', color:'rgba(148,163,184,.45)' }}>
                           {new Date(u.date).toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'})}
-                          {u.accountManager && ` · ${u.accountManager.full_name}`}
                         </p>
                         {u.notes && <p style={{ fontSize:'.8rem', color:'rgba(148,163,184,.5)', marginTop:6, fontStyle:'italic' }}>"{u.notes}"</p>}
                       </div>
@@ -292,7 +324,101 @@ export function ClientProfile({ clientId, canEdit, backHref }: Props) {
         </div>
       )}
 
-      {/* ── Upsell Modal ── */}
+      {/* ── Sales History Tab ── */}
+      {activeTab === 'sales_history' && (
+        <div className="wm-fade-up-2">
+          {/* Lead summary */}
+          {salesLead && (
+            <div className="wm-card" style={{ padding:'20px 24px', marginBottom:16, borderColor:'rgba(244,114,182,.2)' }}>
+              <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:14 }}>
+                <div style={{ width:32, height:32, borderRadius:8, background:'rgba(244,114,182,.12)', display:'flex', alignItems:'center', justifyContent:'center', color:'#f472b6' }}>
+                  <Users size={14}/>
+                </div>
+                <p style={{ fontSize:'.95rem', fontWeight:600, color:'#f1f5f9' }}>Sales Lead Details</p>
+              </div>
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))', gap:12 }}>
+                {[
+                  { label:'Submitted by',   value:salesLead.creator?.full_name ?? '—' },
+                  { label:'Expected Value', value:salesLead.expected_value ? `${salesLead.currency} ${parseFloat(salesLead.expected_value).toLocaleString()}` : '—' },
+                  { label:'Service',        value:salesLead.service_required || '—' },
+                  { label:'Sales Stage',    value:salesLead.sales_stage || '—' },
+                  { label:'Submitted',      value:formatTime(salesLead.created_at) },
+                  { label:'Approved by',    value:salesLead.approver?.full_name ?? '—' },
+                ].map(({ label, value }) => (
+                  <div key={label} style={{ padding:'12px 14px', borderRadius:10, background:'rgba(255,255,255,.03)', border:'0.5px solid rgba(255,255,255,.05)' }}>
+                    <p style={{ fontSize:'.7rem', color:'rgba(148,163,184,.45)', marginBottom:4 }}>{label}</p>
+                    <p style={{ fontSize:'.85rem', fontWeight:500, color:'#f1f5f9' }}>{value}</p>
+                  </div>
+                ))}
+              </div>
+              {salesLead.manager_notes && (
+                <div style={{ marginTop:12, padding:'12px 14px', borderRadius:10, background:'rgba(167,139,250,.06)', border:'0.5px solid rgba(167,139,250,.15)' }}>
+                  <p style={{ fontSize:'.7rem', color:'#a78bfa', marginBottom:4 }}>Manager Notes</p>
+                  <p style={{ fontSize:'.83rem', color:'rgba(148,163,184,.7)' }}>{salesLead.manager_notes}</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Sales logs */}
+          <p style={{ fontSize:'.82rem', color:'rgba(148,163,184,.45)', marginBottom:12 }}>
+            {salesLogs.length} activity log{salesLogs.length!==1?'s':''} from sales team
+          </p>
+          {salesLogs.length === 0 ? (
+            <div className="wm-card" style={{ padding:'40px 24px', textAlign:'center' }}>
+              <p style={{ color:'rgba(148,163,184,.3)', fontSize:'.85rem' }}>No sales logs recorded</p>
+            </div>
+          ) : (
+            <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+              {salesLogs.map((log:any) => {
+                const lt = LOG_TYPE[log.log_type] ?? LOG_TYPE.other;
+                const isExpanded = expandedLog === log.id;
+                return (
+                  <div key={log.id} className="wm-card" style={{ padding:'14px 18px' }}>
+                    <div style={{ display:'flex', alignItems:'flex-start', gap:12 }}>
+                      <div style={{ width:34, height:34, borderRadius:9, flexShrink:0, background:lt.bg, display:'flex', alignItems:'center', justifyContent:'center', color:lt.color }}>
+                        <PhoneIcon size={14}/>
+                      </div>
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:4 }}>
+                          <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                            <p style={{ fontWeight:600, color:'#f1f5f9', fontSize:'.87rem' }}>{log.title}</p>
+                            <span style={{ padding:'2px 8px', borderRadius:99, fontSize:'.68rem', background:lt.bg, color:lt.color }}>{lt.label}</span>
+                          </div>
+                          <button onClick={() => setExpandedLog(isExpanded ? null : log.id)}
+                            style={{ background:'none', border:'none', cursor:'pointer', color:'rgba(148,163,184,.4)' }}>
+                            {isExpanded ? <ChevronUp size={14}/> : <ChevronDown size={14}/>}
+                          </button>
+                        </div>
+                        <div style={{ display:'flex', gap:12, fontSize:'.72rem', color:'rgba(148,163,184,.4)' }}>
+                          <span>By {log.author?.full_name}</span>
+                          <span>{new Date(log.created_at).toLocaleDateString()}</span>
+                          {log.closing_pct !== null && (
+                            <span style={{ color:'#34d399', fontWeight:600 }}>🎯 {log.closing_pct}% closing probability</span>
+                          )}
+                        </div>
+                        {isExpanded && (
+                          <div style={{ marginTop:10, paddingTop:10, borderTop:'1px solid rgba(255,255,255,.05)' }}>
+                            <p style={{ fontSize:'.83rem', color:'rgba(148,163,184,.75)', lineHeight:1.6, marginBottom:8 }}>{log.content}</p>
+                            {log.next_action && (
+                              <div style={{ padding:'8px 12px', borderRadius:8, background:'rgba(251,191,36,.06)', border:'0.5px solid rgba(251,191,36,.15)' }}>
+                                <p style={{ fontSize:'.72rem', color:'#fbbf24', marginBottom:2 }}>Next Action</p>
+                                <p style={{ fontSize:'.82rem', color:'rgba(148,163,184,.7)' }}>{log.next_action}</p>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Upsell Modal */}
       <Dialog open={showUpsellModal} onOpenChange={setShowUpsellModal}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>

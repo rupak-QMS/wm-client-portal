@@ -1,17 +1,25 @@
 'use client';
 import { useState }                              from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, FileText, Phone, Users, Calendar, TrendingUp, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plus, FileText, Phone, Users, Calendar, TrendingUp, ChevronDown, ChevronUp, Lock } from 'lucide-react';
 import { toast } from 'sonner';
 
 const LOG_TYPE_STYLE: Record<string,{bg:string;color:string;icon:any;label:string}> = {
-  call_log:       { bg:'rgba(96,165,250,.12)',  color:'#60a5fa', icon:Phone,     label:'Call Log'        },
-  meeting_notes:  { bg:'rgba(167,139,250,.12)', color:'#a78bfa', icon:Users,     label:'Meeting Notes'   },
-  proposal:       { bg:'rgba(52,211,153,.12)',  color:'#34d399', icon:FileText,  label:'Proposal'        },
-  follow_up:      { bg:'rgba(251,191,36,.12)',  color:'#fbbf24', icon:Calendar,  label:'Follow Up'       },
-  revenue_update: { bg:'rgba(244,114,182,.12)', color:'#f472b6', icon:TrendingUp,label:'Revenue Update'  },
-  closing_update: { bg:'rgba(52,211,153,.12)',  color:'#34d399', icon:TrendingUp,label:'Closing Update'  },
+  call_log:       { bg:'rgba(96,165,250,.12)',  color:'#60a5fa', icon:Phone,      label:'Call Log'       },
+  meeting_notes:  { bg:'rgba(167,139,250,.12)', color:'#a78bfa', icon:Users,      label:'Meeting Notes'  },
+  proposal:       { bg:'rgba(52,211,153,.12)',  color:'#34d399', icon:FileText,   label:'Proposal'       },
+  follow_up:      { bg:'rgba(251,191,36,.12)',  color:'#fbbf24', icon:Calendar,   label:'Follow Up'      },
+  revenue_update: { bg:'rgba(244,114,182,.12)', color:'#f472b6', icon:TrendingUp, label:'Revenue Update' },
+  closing_update: { bg:'rgba(52,211,153,.12)',  color:'#34d399', icon:TrendingUp, label:'Closing Update' },
   other:          { bg:'rgba(148,163,184,.1)',  color:'rgba(148,163,184,.6)', icon:FileText, label:'Other' },
+};
+
+const STATUS_STYLE: Record<string,{bg:string;color:string}> = {
+  draft:            { bg:'rgba(148,163,184,.1)',  color:'rgba(148,163,184,.7)' },
+  pending_approval: { bg:'rgba(251,191,36,.12)',  color:'#fbbf24' },
+  approved:         { bg:'rgba(52,211,153,.12)',  color:'#34d399' },
+  rejected:         { bg:'rgba(248,113,113,.12)', color:'#f87171' },
+  assigned:         { bg:'rgba(96,165,250,.12)',  color:'#60a5fa' },
 };
 
 const inpStyle: React.CSSProperties = { width:'100%', height:40, background:'rgba(255,255,255,.04)', border:'1px solid rgba(124,58,237,.18)', borderRadius:9, padding:'0 12px', fontSize:'.85rem', color:'#f1f5f9', outline:'none' };
@@ -55,7 +63,9 @@ export default function SalesLogsPage() {
     onError: (e:Error) => toast.error(e.message),
   });
 
-  const activeleads = leads.filter((l:any) => ['pending_approval','approved','assigned','draft'].includes(l.status));
+  // Sales can only add logs to draft/pending leads
+  const canAddLog = selectedLead && ['draft','pending_approval'].includes(selectedLead.status);
+  const isAssigned = selectedLead && ['approved','assigned'].includes(selectedLead.status);
 
   return (
     <div className="wm-page-inner">
@@ -66,32 +76,36 @@ export default function SalesLogsPage() {
           <FileText size={15} style={{ color:'#60a5fa' }} />
           <span style={{ fontSize:'.72rem', color:'rgba(148,163,184,.5)', textTransform:'uppercase', letterSpacing:'.06em' }}>Activity</span>
         </div>
-        <h1 style={{ fontSize:'1.65rem', fontWeight:700, color:'#f1f5f9', marginBottom:4 }}>Sales Logs</h1>
-        <p style={{ fontSize:'.875rem', color:'rgba(148,163,184,.5)' }}>Track calls, meetings and deal progress per lead</p>
+        <h1 style={{ fontSize:'1.65rem', fontWeight:700, color:'#f1f5f9', marginBottom:4 }}>My Sales Logs</h1>
+        <p style={{ fontSize:'.875rem', color:'rgba(148,163,184,.5)' }}>Track your calls, meetings and deal progress</p>
       </div>
 
-      <div style={{ display:'grid', gridTemplateColumns:'280px 1fr', gap:16, minHeight:500 }} className="wm-fade-up-2">
+      <div style={{ display:'grid', gridTemplateColumns:'260px 1fr', gap:16, minHeight:500 }} className="wm-fade-up-2">
 
         {/* Lead list */}
         <div className="wm-card" style={{ overflow:'hidden', display:'flex', flexDirection:'column' }}>
           <div style={{ padding:'14px 16px', borderBottom:'1px solid rgba(124,58,237,.1)' }}>
-            <p style={{ fontSize:'.85rem', fontWeight:600, color:'#f1f5f9' }}>Select Lead</p>
-            <p style={{ fontSize:'.72rem', color:'rgba(148,163,184,.4)', marginTop:2 }}>{activeleads.length} active leads</p>
+            <p style={{ fontSize:'.85rem', fontWeight:600, color:'#f1f5f9' }}>My Leads</p>
+            <p style={{ fontSize:'.72rem', color:'rgba(148,163,184,.4)', marginTop:2 }}>{leads.length} total</p>
           </div>
           <div style={{ flex:1, overflowY:'auto' }}>
             {leadsLoading ? (
               <div style={{ textAlign:'center', padding:'30px', color:'rgba(148,163,184,.3)', fontSize:'.82rem' }}>Loading...</div>
-            ) : activeleads.length === 0 ? (
+            ) : leads.length === 0 ? (
               <div style={{ textAlign:'center', padding:'30px', color:'rgba(148,163,184,.3)', fontSize:'.82rem' }}>No leads yet</div>
-            ) : activeleads.map((l:any) => {
+            ) : leads.map((l:any) => {
               const isSelected = selectedLead?.id === l.id;
+              const st = STATUS_STYLE[l.status] ?? STATUS_STYLE.draft;
               return (
                 <button key={l.id} onClick={() => setSelectedLead(l)}
-                  style={{ width:'100%', display:'flex', flexDirection:'column', alignItems:'flex-start', gap:3, padding:'12px 16px', border:'none', cursor:'pointer', textAlign:'left', background: isSelected ? 'rgba(124,58,237,.12)' : 'transparent', borderLeft: isSelected ? '2px solid #a78bfa' : '2px solid transparent', transition:'all .2s' }}
+                  style={{ width:'100%', display:'flex', flexDirection:'column', alignItems:'flex-start', gap:4, padding:'12px 16px', border:'none', cursor:'pointer', textAlign:'left', background: isSelected ? 'rgba(124,58,237,.12)' : 'transparent', borderLeft: isSelected ? '2px solid #a78bfa' : '2px solid transparent', transition:'all .2s' }}
                   onMouseEnter={e => { if (!isSelected) (e.currentTarget as HTMLButtonElement).style.background='rgba(124,58,237,.06)'; }}
                   onMouseLeave={e => { if (!isSelected) (e.currentTarget as HTMLButtonElement).style.background='transparent'; }}>
                   <p style={{ fontSize:'.83rem', fontWeight:500, color: isSelected ? '#f1f5f9' : 'rgba(241,245,249,.75)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', width:'100%' }}>{l.company_name}</p>
-                  <p style={{ fontSize:'.72rem', color:'rgba(148,163,184,.4)', textTransform:'capitalize' }}>{l.sales_stage} · {l.status.replace(/_/g,' ')}</p>
+                  <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                    <span style={{ fontSize:'.68rem', padding:'1px 7px', borderRadius:99, background:st.bg, color:st.color, textTransform:'capitalize' }}>{l.status.replace(/_/g,' ')}</span>
+                    {['approved','assigned'].includes(l.status) && <Lock size={10} style={{ color:'rgba(148,163,184,.3)' }} />}
+                  </div>
                 </button>
               );
             })}
@@ -103,33 +117,59 @@ export default function SalesLogsPage() {
           {!selectedLead ? (
             <div className="wm-card" style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'60px 24px' }}>
               <FileText size={36} style={{ color:'rgba(148,163,184,.15)', marginBottom:12 }} />
-              <p style={{ color:'rgba(148,163,184,.4)', fontSize:'.9rem' }}>Select a lead to view logs</p>
+              <p style={{ color:'rgba(148,163,184,.4)', fontSize:'.9rem' }}>Select a lead to view your logs</p>
             </div>
           ) : (
             <>
               {/* Lead header */}
-              <div className="wm-card" style={{ padding:'16px 20px', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-                <div>
-                  <p style={{ fontWeight:600, color:'#f1f5f9', fontSize:'.95rem', marginBottom:2 }}>{selectedLead.company_name}</p>
-                  <p style={{ fontSize:'.78rem', color:'rgba(148,163,184,.5)' }}>{selectedLead.contact_person} · {selectedLead.email}</p>
+              <div className="wm-card" style={{ padding:'16px 20px' }}>
+                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
+                  <div>
+                    <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4 }}>
+                      <p style={{ fontWeight:600, color:'#f1f5f9', fontSize:'.95rem' }}>{selectedLead.company_name}</p>
+                      <span style={{ padding:'2px 9px', borderRadius:99, fontSize:'.7rem', fontWeight:500, background:STATUS_STYLE[selectedLead.status]?.bg, color:STATUS_STYLE[selectedLead.status]?.color, textTransform:'capitalize' }}>
+                        {selectedLead.status.replace(/_/g,' ')}
+                      </span>
+                    </div>
+                    <p style={{ fontSize:'.78rem', color:'rgba(148,163,184,.5)' }}>{selectedLead.contact_person} · {selectedLead.email}</p>
+                  </div>
+                  {canAddLog ? (
+                    <button className="wm-btn-primary" onClick={() => setShowModal(true)}
+                      style={{ display:'flex', alignItems:'center', gap:6, height:36, padding:'0 14px', fontSize:'.82rem' }}>
+                      <Plus size={13}/> Add Log
+                    </button>
+                  ) : isAssigned ? (
+                    <div style={{ display:'flex', alignItems:'center', gap:6, padding:'6px 12px', borderRadius:9, background:'rgba(96,165,250,.08)', border:'0.5px solid rgba(96,165,250,.2)' }}>
+                      <Lock size={12} style={{ color:'#60a5fa' }} />
+                      <span style={{ fontSize:'.75rem', color:'#60a5fa' }}>Assigned to AM — view only</span>
+                    </div>
+                  ) : null}
                 </div>
-                <button className="wm-btn-primary" onClick={() => setShowModal(true)}
-                  style={{ display:'flex', alignItems:'center', gap:6, height:36, padding:'0 14px', fontSize:'.82rem' }}>
-                  <Plus size={13}/> Add Log
-                </button>
+
+                {/* Assigned notice */}
+                {isAssigned && (
+                  <div style={{ marginTop:12, padding:'10px 14px', borderRadius:9, background:'rgba(96,165,250,.06)', border:'0.5px solid rgba(96,165,250,.15)', display:'flex', alignItems:'center', gap:8 }}>
+                    <Lock size={13} style={{ color:'#60a5fa', flexShrink:0 }} />
+                    <p style={{ fontSize:'.78rem', color:'rgba(148,163,184,.6)' }}>
+                      This lead has been assigned to an Account Manager. You can view your own logs but cannot add new ones or see client activity.
+                    </p>
+                  </div>
+                )}
               </div>
 
-              {/* Logs list */}
+              {/* Logs */}
               {logsLoading ? (
                 <div style={{ textAlign:'center', padding:'40px', color:'rgba(148,163,184,.3)' }}>Loading logs...</div>
               ) : logs.length === 0 ? (
                 <div className="wm-card" style={{ padding:'40px 24px', textAlign:'center' }}>
-                  <p style={{ color:'rgba(148,163,184,.3)', fontSize:'.85rem' }}>No logs yet — add your first activity log</p>
+                  <p style={{ color:'rgba(148,163,184,.3)', fontSize:'.85rem' }}>
+                    {canAddLog ? 'No logs yet — add your first activity log' : 'No logs recorded for this lead'}
+                  </p>
                 </div>
               ) : (
                 <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
                   {logs.map((log:any) => {
-                    const lt  = LOG_TYPE_STYLE[log.log_type] ?? LOG_TYPE_STYLE.other;
+                    const lt   = LOG_TYPE_STYLE[log.log_type] ?? LOG_TYPE_STYLE.other;
                     const Icon = lt.icon;
                     const isExpanded = expandedLog === log.id;
                     return (
