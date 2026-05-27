@@ -3,13 +3,6 @@
 import { useState }     from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter }    from 'next/navigation';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge }        from '@/components/ui/badge';
-import { Button }       from '@/components/ui/button';
-import { Input }        from '@/components/ui/input';
-import { Label }        from '@/components/ui/label';
-import { Textarea }     from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import {
   ArrowLeft, Building2, Mail, Phone, Globe,
@@ -19,485 +12,329 @@ import {
 import { formatTime } from '@/lib/utils';
 import { toast }      from 'sonner';
 
-const STATUS_COLORS: Record<string, string> = {
-  pending:   'bg-amber-100  text-amber-700  dark:bg-amber-900/30  dark:text-amber-400',
-  active:    'bg-blue-100   text-blue-700   dark:bg-blue-900/30   dark:text-blue-400',
-  completed: 'bg-green-100  text-green-700  dark:bg-green-900/30  dark:text-green-400',
-  cancelled: 'bg-red-100    text-red-700    dark:bg-red-900/30    dark:text-red-400',
+/* ── style maps ── */
+const UPSELL_STATUS: Record<string, { bg: string; color: string }> = {
+  pending:   { bg: 'rgba(251,191,36,.12)',  color: '#fbbf24' },
+  active:    { bg: 'rgba(96,165,250,.12)',  color: '#60a5fa' },
+  completed: { bg: 'rgba(52,211,153,.12)',  color: '#34d399' },
+  cancelled: { bg: 'rgba(248,113,113,.12)', color: '#f87171' },
 };
-
-const CLIENT_STATUS_COLORS: Record<string, string> = {
-  active:    'bg-green-100  text-green-700  dark:bg-green-900/30  dark:text-green-400',
-  inactive:  'bg-gray-100   text-gray-700   dark:bg-gray-900/30   dark:text-gray-400',
-  suspended: 'bg-red-100    text-red-700    dark:bg-red-900/30    dark:text-red-400',
+const CLIENT_STATUS: Record<string, { bg: string; color: string }> = {
+  active:    { bg: 'rgba(52,211,153,.12)',  color: '#34d399' },
+  inactive:  { bg: 'rgba(148,163,184,.1)',  color: 'rgba(148,163,184,.6)' },
+  suspended: { bg: 'rgba(248,113,113,.12)', color: '#f87171' },
 };
-
-const REPORT_TYPE_COLORS: Record<string, string> = {
-  seo:            'bg-blue-100   text-blue-700   dark:bg-blue-900/30   dark:text-blue-400',
-  website_update: 'bg-green-100  text-green-700  dark:bg-green-900/30  dark:text-green-400',
-  analytics:      'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
-  audit:          'bg-amber-100  text-amber-700  dark:bg-amber-900/30  dark:text-amber-400',
-  other:          'bg-gray-100   text-gray-700   dark:bg-gray-900/30   dark:text-gray-400',
+const REPORT_TYPE: Record<string, { bg: string; color: string }> = {
+  seo:            { bg: 'rgba(96,165,250,.12)',  color: '#60a5fa' },
+  website_update: { bg: 'rgba(52,211,153,.12)',  color: '#34d399' },
+  analytics:      { bg: 'rgba(167,139,250,.12)', color: '#a78bfa' },
+  audit:          { bg: 'rgba(251,191,36,.12)',  color: '#fbbf24' },
+  other:          { bg: 'rgba(148,163,184,.1)',  color: 'rgba(148,163,184,.6)' },
 };
 
 const CURRENCIES = ['USD','GBP','EUR','AUD','INR','SGD'];
+const emptyUpsell = { client_id:'', date:'', product_sold:'', total_cost:'', upfront_amount:'', project_status:'pending', currency:'USD', notes:'' };
 
-const emptyUpsell = {
-  client_id: '', date: '', product_sold: '',
-  total_cost: '', upfront_amount: '',
-  project_status: 'pending', currency: 'USD', notes: '',
-};
+const inpStyle: React.CSSProperties = { width:'100%', height:40, background:'rgba(255,255,255,.04)', border:'1px solid rgba(124,58,237,.18)', borderRadius:9, padding:'0 12px', fontSize:'.85rem', color:'#f1f5f9', outline:'none' };
+const selStyle: React.CSSProperties = { ...inpStyle, cursor:'pointer' };
+const lblStyle: React.CSSProperties = { fontSize:'.75rem', color:'rgba(148,163,184,.55)', textTransform:'uppercase', letterSpacing:'.05em', display:'block', marginBottom:6 };
 
-interface Props {
-  clientId:  string;
-  canEdit:   boolean;
-  backHref:  string;
-}
+interface Props { clientId: string; canEdit: boolean; backHref: string; }
 
 export function ClientProfile({ clientId, canEdit, backHref }: Props) {
   const router = useRouter();
   const qc     = useQueryClient();
-
   const [showUpsellModal, setShowUpsellModal] = useState(false);
   const [editUpsellId,    setEditUpsellId]    = useState<string | null>(null);
   const [upsellForm,      setUpsellForm]      = useState({ ...emptyUpsell });
-  const [activeTab,       setActiveTab]       = useState<'overview' | 'upsells' | 'reports'>('overview');
+  const [activeTab,       setActiveTab]       = useState<'overview'|'upsells'|'reports'>('overview');
 
-  // Fetch client
-  const { data: client, isLoading } = useQuery({
-    queryKey: ['client', clientId],
-    queryFn:  async () => (await (await fetch(`/api/clients/${clientId}`)).json()).data,
-    enabled:  !!clientId,
-  });
+  const { data: client, isLoading } = useQuery({ queryKey:['client',clientId], queryFn: async () => (await (await fetch(`/api/clients/${clientId}`)).json()).data, enabled:!!clientId });
+  const { data: reports = [] }      = useQuery({ queryKey:['reports',clientId], queryFn: async () => (await (await fetch(`/api/reports?client_id=${clientId}`)).json()).data ?? [], enabled:!!clientId });
+  const { data: upsells = [] }      = useQuery({ queryKey:['upsells',clientId], queryFn: async () => (await (await fetch(`/api/upsells?client_id=${clientId}`)).json()).data ?? [], enabled:!!clientId });
 
-  // Fetch reports
-  const { data: reports = [] } = useQuery({
-    queryKey: ['reports', clientId],
-    queryFn:  async () => (await (await fetch(`/api/reports?client_id=${clientId}`)).json()).data ?? [],
-    enabled:  !!clientId,
-  });
+  const totalRevenue = upsells.reduce((s:number,u:any) => s + parseFloat(u.total_cost||0), 0);
+  const totalUpfront = upsells.reduce((s:number,u:any) => s + parseFloat(u.upfront_amount||0), 0);
+  const totalDue     = upsells.reduce((s:number,u:any) => s + parseFloat(u.remaining_due||0), 0);
 
-  // Fetch upsells
-  const { data: upsells = [] } = useQuery({
-    queryKey: ['upsells', clientId],
-    queryFn:  async () => (await (await fetch(`/api/upsells?client_id=${clientId}`)).json()).data ?? [],
-    enabled:  !!clientId,
-  });
-
-  const totalRevenue  = upsells.reduce((s: number, u: any) => s + parseFloat(u.total_cost    || 0), 0);
-  const totalUpfront  = upsells.reduce((s: number, u: any) => s + parseFloat(u.upfront_amount|| 0), 0);
-  const totalDue      = upsells.reduce((s: number, u: any) => s + parseFloat(u.remaining_due || 0), 0);
-
-  // Save upsell
   const saveUpsell = useMutation({
-    mutationFn: async (data: any) => {
+    mutationFn: async (data:any) => {
       const method = editUpsellId ? 'PATCH' : 'POST';
-      const body   = editUpsellId ? { id: editUpsellId, ...data } : { ...data, client_id: clientId };
-      const res    = await fetch('/api/upsells', {
-        method, headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error);
-      return json.data;
+      const body   = editUpsellId ? { id:editUpsellId, ...data } : { ...data, client_id:clientId };
+      const res    = await fetch('/api/upsells', { method, headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) });
+      const json   = await res.json(); if (!res.ok) throw new Error(json.error); return json.data;
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['upsells', clientId] });
-      toast.success(editUpsellId ? 'Upsell updated!' : 'Upsell logged!');
-      setShowUpsellModal(false);
-      setEditUpsellId(null);
-      setUpsellForm({ ...emptyUpsell });
-    },
-    onError: (e: Error) => toast.error(e.message),
+    onSuccess: () => { qc.invalidateQueries({ queryKey:['upsells',clientId] }); toast.success(editUpsellId ? 'Upsell updated!' : 'Upsell logged!'); setShowUpsellModal(false); setEditUpsellId(null); setUpsellForm({ ...emptyUpsell }); },
+    onError: (e:Error) => toast.error(e.message),
   });
 
-  // Delete upsell
   const deleteUpsell = useMutation({
-    mutationFn: async (id: string) => {
-      const res = await fetch(`/api/upsells?id=${id}`, { method: 'DELETE' });
-      if (!res.ok) throw new Error('Delete failed');
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['upsells', clientId] });
-      toast.success('Upsell deleted');
-    },
-    onError: (e: Error) => toast.error(e.message),
+    mutationFn: async (id:string) => { const res = await fetch(`/api/upsells?id=${id}`,{ method:'DELETE' }); if (!res.ok) throw new Error('Delete failed'); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey:['upsells',clientId] }); toast.success('Upsell deleted'); },
+    onError: (e:Error) => toast.error(e.message),
   });
 
-  const openEditUpsell = (u: any) => {
+  const openEditUpsell = (u:any) => {
     setEditUpsellId(u.id);
-    setUpsellForm({
-      client_id:      u.client_id,
-      date:           u.date?.split('T')[0] || '',
-      product_sold:   u.product_sold,
-      total_cost:     String(u.total_cost),
-      upfront_amount: String(u.upfront_amount),
-      project_status: u.project_status,
-      currency:       u.currency,
-      notes:          u.notes || '',
-    });
+    setUpsellForm({ client_id:u.client_id, date:u.date?.split('T')[0]||'', product_sold:u.product_sold, total_cost:String(u.total_cost), upfront_amount:String(u.upfront_amount), project_status:u.project_status, currency:u.currency, notes:u.notes||'' });
     setShowUpsellModal(true);
   };
 
-  if (isLoading) return <div className="text-center py-20 text-muted-foreground">Loading...</div>;
-  if (!client)   return <div className="text-center py-20 text-muted-foreground">Client not found</div>;
+  if (isLoading) return <div style={{ textAlign:'center', padding:'80px', color:'rgba(148,163,184,.3)' }}>Loading...</div>;
+  if (!client)   return <div style={{ textAlign:'center', padding:'80px', color:'rgba(148,163,184,.3)' }}>Client not found</div>;
+
+  const cst = CLIENT_STATUS[client.status] ?? CLIENT_STATUS.inactive;
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => router.push(backHref)}>
-          <ArrowLeft className="h-4 w-4" />
-        </Button>
-        <div className="flex-1">
-          <div className="flex items-center gap-3 flex-wrap">
-            <h1 className="text-2xl font-bold">{client.company_name}</h1>
-            <span className={`text-xs px-2.5 py-1 rounded-full font-medium capitalize ${CLIENT_STATUS_COLORS[client.status]}`}>
-              {client.status}
-            </span>
+    <div className="wm-page-inner">
+
+      {/* ── Header ── */}
+      <div style={{ display:'flex', alignItems:'center', gap:14, marginBottom:28 }} className="wm-fade-up">
+        <button onClick={() => router.push(backHref)} style={{ width:36, height:36, borderRadius:9, border:'none', background:'rgba(255,255,255,.05)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'rgba(148,163,184,.6)', flexShrink:0, transition:'all .2s' }}
+          onMouseEnter={e => { const b=e.currentTarget as HTMLButtonElement; b.style.background='rgba(124,58,237,.12)'; b.style.color='#a78bfa'; }}
+          onMouseLeave={e => { const b=e.currentTarget as HTMLButtonElement; b.style.background='rgba(255,255,255,.05)'; b.style.color='rgba(148,163,184,.6)'; }}>
+          <ArrowLeft size={16}/>
+        </button>
+        <div style={{ flex:1 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap', marginBottom:4 }}>
+            <h1 style={{ fontSize:'1.65rem', fontWeight:700, color:'#f1f5f9' }}>{client.company_name}</h1>
+            <span style={{ padding:'3px 10px', borderRadius:99, fontSize:'.72rem', fontWeight:500, background:cst.bg, color:cst.color, textTransform:'capitalize' }}>{client.status}</span>
           </div>
-          <p className="text-muted-foreground text-sm">
-            Account Manager: <span className="font-medium text-foreground">
-              {client.assignedManager?.full_name ?? 'Unassigned'}
-            </span>
+          <p style={{ fontSize:'.83rem', color:'rgba(148,163,184,.5)' }}>
+            Account Manager: <span style={{ color:'rgba(148,163,184,.8)', fontWeight:500 }}>{client.assignedManager?.full_name ?? 'Unassigned'}</span>
           </p>
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="border-border/50">
-          <CardContent className="p-4">
-            <p className="text-xs text-muted-foreground uppercase tracking-wider">Total Revenue</p>
-            <p className="text-2xl font-bold mt-1">${totalRevenue.toLocaleString()}</p>
-          </CardContent>
-        </Card>
-        <Card className="border-border/50">
-          <CardContent className="p-4">
-            <p className="text-xs text-muted-foreground uppercase tracking-wider">Collected</p>
-            <p className="text-2xl font-bold mt-1 text-green-400">${totalUpfront.toLocaleString()}</p>
-          </CardContent>
-        </Card>
-        <Card className="border-border/50">
-          <CardContent className="p-4">
-            <p className="text-xs text-muted-foreground uppercase tracking-wider">Remaining Due</p>
-            <p className="text-2xl font-bold mt-1 text-amber-400">${totalDue.toLocaleString()}</p>
-          </CardContent>
-        </Card>
-        <Card className="border-border/50">
-          <CardContent className="p-4">
-            <p className="text-xs text-muted-foreground uppercase tracking-wider">Total Reports</p>
-            <p className="text-2xl font-bold mt-1">{reports.length}</p>
-          </CardContent>
-        </Card>
+      {/* ── Stat cards ── */}
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))', gap:14, marginBottom:24 }} className="wm-fade-up">
+        {[
+          { label:'Total Revenue',  value:`$${totalRevenue.toLocaleString()}`, color:'#a78bfa' },
+          { label:'Collected',      value:`$${totalUpfront.toLocaleString()}`, color:'#34d399' },
+          { label:'Remaining Due',  value:`$${totalDue.toLocaleString()}`,     color:'#fbbf24' },
+          { label:'Total Reports',  value:String(reports.length),              color:'#60a5fa' },
+        ].map(s => (
+          <div key={s.label} className="wm-stat">
+            <p style={{ fontSize:'.7rem', color:'rgba(148,163,184,.5)', textTransform:'uppercase', letterSpacing:'.05em', marginBottom:6 }}>{s.label}</p>
+            <p style={{ fontSize:'1.6rem', fontWeight:700, color:s.color }}>{s.value}</p>
+          </div>
+        ))}
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-1 border-b border-border">
-        {(['overview', 'upsells', 'reports'] as const).map(tab => (
-          <button key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`px-4 py-2.5 text-sm font-medium capitalize border-b-2 transition-colors ${
-              activeTab === tab
-                ? 'border-primary text-primary'
-                : 'border-transparent text-muted-foreground hover:text-foreground'
-            }`}>
+      {/* ── Tabs ── */}
+      <div style={{ display:'flex', gap:4, borderBottom:'1px solid rgba(124,58,237,.12)', marginBottom:20 }} className="wm-fade-up-2">
+        {(['overview','upsells','reports'] as const).map(tab => (
+          <button key={tab} onClick={() => setActiveTab(tab)} style={{
+            padding:'9px 16px', border:'none', background:'none', cursor:'pointer',
+            fontSize:'.83rem', fontWeight:500, textTransform:'capitalize',
+            color: activeTab===tab ? '#a78bfa' : 'rgba(148,163,184,.5)',
+            borderBottom: activeTab===tab ? '2px solid #a78bfa' : '2px solid transparent',
+            transition:'all .2s', display:'flex', alignItems:'center', gap:6,
+          }}>
             {tab}
-            {tab === 'upsells' && upsells.length > 0 && (
-              <span className="ml-2 bg-primary/10 text-primary text-xs px-1.5 py-0.5 rounded-full">
-                {upsells.length}
-              </span>
+            {tab==='upsells' && upsells.length > 0 && (
+              <span style={{ padding:'1px 7px', borderRadius:99, fontSize:'.68rem', background:'rgba(167,139,250,.15)', color:'#a78bfa' }}>{upsells.length}</span>
             )}
-            {tab === 'reports' && reports.length > 0 && (
-              <span className="ml-2 bg-primary/10 text-primary text-xs px-1.5 py-0.5 rounded-full">
-                {reports.length}
-              </span>
+            {tab==='reports' && reports.length > 0 && (
+              <span style={{ padding:'1px 7px', borderRadius:99, fontSize:'.68rem', background:'rgba(96,165,250,.15)', color:'#60a5fa' }}>{reports.length}</span>
             )}
           </button>
         ))}
       </div>
 
-      {/* Overview Tab */}
+      {/* ── Overview Tab ── */}
       {activeTab === 'overview' && (
-        <Card className="border-border/50">
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <Building2 className="h-4 w-4 text-primary" />
-              Client Information
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-4">
-                <div className="flex items-start gap-3">
-                  <User className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-                  <div>
-                    <p className="text-xs text-muted-foreground">Contact Person</p>
-                    <p className="text-sm font-medium">{client.contact_person}</p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3">
-                  <Mail className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-                  <div>
-                    <p className="text-xs text-muted-foreground">Email</p>
-                    <p className="text-sm font-medium">{client.email}</p>
-                  </div>
-                </div>
-                {client.phone && (
-                  <div className="flex items-start gap-3">
-                    <Phone className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-                    <div>
-                      <p className="text-xs text-muted-foreground">Phone</p>
-                      <p className="text-sm font-medium">{client.phone}</p>
-                    </div>
-                  </div>
-                )}
-              </div>
-              <div className="space-y-4">
-                {client.website && (
-                  <div className="flex items-start gap-3">
-                    <Globe className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-                    <div>
-                      <p className="text-xs text-muted-foreground">Website</p>
-                      <a href={client.website} target="_blank" rel="noopener noreferrer"
-                        className="text-sm font-medium text-primary hover:underline">
-                        {client.website.replace('https://', '').replace('http://', '')}
-                      </a>
-                    </div>
-                  </div>
-                )}
-                <div className="flex items-start gap-3">
-                  <User className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-                  <div>
-                    <p className="text-xs text-muted-foreground">Account Manager</p>
-                    <p className="text-sm font-medium">{client.assignedManager?.full_name ?? 'Unassigned'}</p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3">
-                  <Calendar className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-                  <div>
-                    <p className="text-xs text-muted-foreground">Client Since</p>
-                    <p className="text-sm font-medium">{formatTime(client.created_at)}</p>
-                  </div>
-                </div>
-              </div>
+        <div className="wm-card wm-fade-up-2" style={{ padding:'24px' }}>
+          <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:20 }}>
+            <div style={{ width:32, height:32, borderRadius:8, background:'rgba(167,139,250,.12)', display:'flex', alignItems:'center', justifyContent:'center', color:'#a78bfa' }}>
+              <Building2 size={15}/>
             </div>
-            {client.notes && (
-              <div className="mt-6 p-4 bg-muted/40 rounded-xl">
-                <p className="text-xs text-muted-foreground mb-1 font-medium uppercase tracking-wider">Notes</p>
-                <p className="text-sm">{client.notes}</p>
+            <p style={{ fontSize:'.95rem', fontWeight:600, color:'#f1f5f9' }}>Client Information</p>
+          </div>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(240px,1fr))', gap:20 }}>
+            {[
+              { icon:User,     label:'Contact Person', value:client.contact_person },
+              { icon:Mail,     label:'Email',          value:client.email },
+              ...(client.phone   ? [{ icon:Phone,    label:'Phone',          value:client.phone }]   : []),
+              ...(client.website ? [{ icon:Globe,    label:'Website',        value:client.website, isLink:true }] : []),
+              { icon:User,     label:'Account Manager', value:client.assignedManager?.full_name ?? 'Unassigned' },
+              { icon:Calendar, label:'Client Since',    value:formatTime(client.created_at) },
+            ].map(({ icon:Icon, label, value, isLink }:any) => (
+              <div key={label} style={{ display:'flex', alignItems:'flex-start', gap:12 }}>
+                <div style={{ width:32, height:32, borderRadius:8, background:'rgba(255,255,255,.04)', display:'flex', alignItems:'center', justifyContent:'center', color:'rgba(148,163,184,.4)', flexShrink:0, marginTop:2 }}>
+                  <Icon size={14}/>
+                </div>
+                <div>
+                  <p style={{ fontSize:'.72rem', color:'rgba(148,163,184,.45)', textTransform:'uppercase', letterSpacing:'.04em', marginBottom:3 }}>{label}</p>
+                  {isLink ? (
+                    <a href={value} target="_blank" rel="noopener noreferrer" style={{ fontSize:'.87rem', fontWeight:500, color:'#a78bfa', textDecoration:'none' }}>
+                      {value.replace(/https?:\/\//,'')}
+                    </a>
+                  ) : (
+                    <p style={{ fontSize:'.87rem', fontWeight:500, color:'#f1f5f9' }}>{value}</p>
+                  )}
+                </div>
               </div>
-            )}
-          </CardContent>
-        </Card>
+            ))}
+          </div>
+          {client.notes && (
+            <div style={{ marginTop:20, padding:'14px 16px', borderRadius:10, background:'rgba(255,255,255,.03)', border:'0.5px solid rgba(255,255,255,.06)' }}>
+              <p style={{ fontSize:'.7rem', color:'rgba(148,163,184,.45)', textTransform:'uppercase', letterSpacing:'.05em', marginBottom:6 }}>Notes</p>
+              <p style={{ fontSize:'.85rem', color:'rgba(148,163,184,.7)', lineHeight:1.6 }}>{client.notes}</p>
+            </div>
+          )}
+        </div>
       )}
 
-      {/* Upsells Tab */}
+      {/* ── Upsells Tab ── */}
       {activeTab === 'upsells' && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">{upsells.length} upsell deal{upsells.length !== 1 ? 's' : ''} recorded</p>
+        <div className="wm-fade-up-2">
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
+            <p style={{ fontSize:'.82rem', color:'rgba(148,163,184,.45)' }}>{upsells.length} deal{upsells.length!==1?'s':''} recorded</p>
             {canEdit && (
-              <Button size="sm" onClick={() => {
-                setEditUpsellId(null);
-                setUpsellForm({ ...emptyUpsell, client_id: clientId });
-                setShowUpsellModal(true);
-              }}>
-                <Plus className="mr-2 h-4 w-4" />
-                Log Upsell
-              </Button>
+              <button className="wm-btn-primary" onClick={() => { setEditUpsellId(null); setUpsellForm({ ...emptyUpsell, client_id:clientId }); setShowUpsellModal(true); }}
+                style={{ display:'flex', alignItems:'center', gap:6, height:34, padding:'0 14px', fontSize:'.82rem' }}>
+                <Plus size={13}/> Log Upsell
+              </button>
             )}
           </div>
 
           {upsells.length === 0 ? (
-            <Card>
-              <CardContent className="py-16 text-center text-muted-foreground">
-                <TrendingUp className="h-10 w-10 mx-auto mb-3 opacity-30" />
-                <p className="font-medium">No upsells recorded</p>
-                {canEdit && <p className="text-sm mt-1">Click "Log Upsell" to record a deal</p>}
-              </CardContent>
-            </Card>
+            <div className="wm-card" style={{ padding:'60px 24px', textAlign:'center' }}>
+              <TrendingUp size={36} style={{ color:'rgba(148,163,184,.15)', margin:'0 auto 12px', display:'block' }} />
+              <p style={{ color:'rgba(148,163,184,.4)' }}>No upsells recorded</p>
+            </div>
           ) : (
-            <div className="space-y-3">
-              {upsells.map((u: any) => (
-                <Card key={u.id} className="border-border/50 hover:border-border transition-colors">
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <p className="font-semibold">{u.product_sold}</p>
-                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium capitalize ${STATUS_COLORS[u.project_status]}`}>
-                            {u.project_status}
-                          </span>
+            <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+              {upsells.map((u:any) => {
+                const st = UPSELL_STATUS[u.project_status] ?? UPSELL_STATUS.pending;
+                return (
+                  <div key={u.id} className="wm-card" style={{ padding:'16px 20px' }}>
+                    <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:12, marginBottom:12 }}>
+                      <div>
+                        <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4 }}>
+                          <p style={{ fontWeight:600, color:'#f1f5f9', fontSize:'.9rem' }}>{u.product_sold}</p>
+                          <span style={{ padding:'2px 9px', borderRadius:99, fontSize:'.7rem', fontWeight:500, background:st.bg, color:st.color, textTransform:'capitalize' }}>{u.project_status}</span>
                         </div>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {new Date(u.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })}
+                        <p style={{ fontSize:'.75rem', color:'rgba(148,163,184,.45)' }}>
+                          {new Date(u.date).toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'})}
                           {u.accountManager && ` · ${u.accountManager.full_name}`}
                         </p>
-                        {u.notes && (
-                          <p className="text-sm text-muted-foreground mt-2 italic">"{u.notes}"</p>
-                        )}
+                        {u.notes && <p style={{ fontSize:'.8rem', color:'rgba(148,163,184,.5)', marginTop:6, fontStyle:'italic' }}>"{u.notes}"</p>}
                       </div>
                       {canEdit && (
-                        <div className="flex gap-1 flex-shrink-0">
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary"
-                            onClick={() => openEditUpsell(u)}>
-                            <Pencil className="h-3.5 w-3.5" />
-                          </Button>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                            onClick={() => deleteUpsell.mutate(u.id)}>
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
+                        <div style={{ display:'flex', gap:4, flexShrink:0 }}>
+                          {[
+                            { icon:Pencil, action:() => openEditUpsell(u), color:'#a78bfa' },
+                            { icon:Trash2, action:() => deleteUpsell.mutate(u.id), color:'#f87171' },
+                          ].map(({ icon:Icon, action, color },i) => (
+                            <button key={i} onClick={action} style={{ width:28, height:28, borderRadius:7, border:'none', background:'rgba(255,255,255,.04)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'rgba(148,163,184,.4)', transition:'all .2s' }}
+                              onMouseEnter={e => { const b=e.currentTarget as HTMLButtonElement; b.style.background=color+'18'; b.style.color=color; }}
+                              onMouseLeave={e => { const b=e.currentTarget as HTMLButtonElement; b.style.background='rgba(255,255,255,.04)'; b.style.color='rgba(148,163,184,.4)'; }}>
+                              <Icon size={12}/>
+                            </button>
+                          ))}
                         </div>
                       )}
                     </div>
-                    <div className="mt-3 grid grid-cols-3 gap-3 pt-3 border-t border-border">
-                      <div>
-                        <p className="text-xs text-muted-foreground">Total Cost</p>
-                        <p className="text-sm font-bold">{u.currency} {parseFloat(u.total_cost).toLocaleString()}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground">Upfront Paid</p>
-                        <p className="text-sm font-bold text-green-400">{u.currency} {parseFloat(u.upfront_amount).toLocaleString()}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground">Remaining Due</p>
-                        <p className="text-sm font-bold text-amber-400">{u.currency} {parseFloat(u.remaining_due || 0).toLocaleString()}</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Reports Tab */}
-      {activeTab === 'reports' && (
-        <div className="space-y-3">
-          {reports.length === 0 ? (
-            <Card>
-              <CardContent className="py-16 text-center text-muted-foreground">
-                <FileText className="h-10 w-10 mx-auto mb-3 opacity-30" />
-                <p className="font-medium">No reports uploaded</p>
-              </CardContent>
-            </Card>
-          ) : (
-            reports.map((r: any) => (
-              <Card key={r.id} className="border-border/50 hover:border-border transition-colors">
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-4">
-                    <div className="p-2.5 rounded-xl bg-primary/10 text-primary flex-shrink-0">
-                      <FileText className="h-5 w-5" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold truncate">{r.title}</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        Uploaded by {r.uploader?.full_name} · {formatTime(r.created_at)}
-                      </p>
-                      {r.description && (
-                        <p className="text-sm text-muted-foreground mt-1">{r.description}</p>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      <span className={`text-xs px-2 py-1 rounded-full font-medium capitalize ${REPORT_TYPE_COLORS[r.report_type] ?? ''}`}>
-                        {r.report_type.replace('_', ' ')}
-                      </span>
-                      <a href={r.file_url} target="_blank" rel="noopener noreferrer">
-                        <Button variant="outline" size="sm">
-                          <Download className="h-3.5 w-3.5 mr-1.5" />
-                          Download
-                        </Button>
-                      </a>
+                    <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:12, paddingTop:12, borderTop:'1px solid rgba(255,255,255,.05)' }}>
+                      {[
+                        { label:'Total Cost',    value:`${u.currency} ${parseFloat(u.total_cost).toLocaleString()}`,        color:'#f1f5f9' },
+                        { label:'Upfront Paid',  value:`${u.currency} ${parseFloat(u.upfront_amount).toLocaleString()}`,    color:'#34d399' },
+                        { label:'Remaining Due', value:`${u.currency} ${parseFloat(u.remaining_due||0).toLocaleString()}`,  color:'#fbbf24' },
+                      ].map(({ label,value,color }) => (
+                        <div key={label}>
+                          <p style={{ fontSize:'.7rem', color:'rgba(148,163,184,.4)', marginBottom:3 }}>{label}</p>
+                          <p style={{ fontSize:'.9rem', fontWeight:700, color }}>{value}</p>
+                        </div>
+                      ))}
                     </div>
                   </div>
-                </CardContent>
-              </Card>
-            ))
+                );
+              })}
+            </div>
           )}
         </div>
       )}
 
-      {/* Upsell Modal */}
+      {/* ── Reports Tab ── */}
+      {activeTab === 'reports' && (
+        <div className="wm-fade-up-2" style={{ display:'flex', flexDirection:'column', gap:10 }}>
+          {reports.length === 0 ? (
+            <div className="wm-card" style={{ padding:'60px 24px', textAlign:'center' }}>
+              <FileText size={36} style={{ color:'rgba(148,163,184,.15)', margin:'0 auto 12px', display:'block' }} />
+              <p style={{ color:'rgba(148,163,184,.4)' }}>No reports uploaded</p>
+            </div>
+          ) : reports.map((r:any) => {
+            const rt = REPORT_TYPE[r.report_type] ?? REPORT_TYPE.other;
+            return (
+              <div key={r.id} className="wm-card" style={{ padding:'16px 20px', display:'flex', alignItems:'center', gap:14 }}>
+                <div style={{ width:40, height:40, borderRadius:10, flexShrink:0, background:rt.bg, border:`0.5px solid ${rt.color}33`, display:'flex', alignItems:'center', justifyContent:'center', color:rt.color }}>
+                  <FileText size={17}/>
+                </div>
+                <div style={{ flex:1, minWidth:0 }}>
+                  <p style={{ fontWeight:600, color:'#f1f5f9', fontSize:'.88rem', marginBottom:3, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{r.title}</p>
+                  <p style={{ fontSize:'.75rem', color:'rgba(148,163,184,.45)' }}>Uploaded by {r.uploader?.full_name} · {formatTime(r.created_at)}</p>
+                  {r.description && <p style={{ fontSize:'.78rem', color:'rgba(148,163,184,.4)', marginTop:4 }}>{r.description}</p>}
+                </div>
+                <div style={{ display:'flex', alignItems:'center', gap:8, flexShrink:0 }}>
+                  <span style={{ padding:'3px 10px', borderRadius:99, fontSize:'.7rem', fontWeight:500, background:rt.bg, color:rt.color, textTransform:'capitalize' }}>
+                    {r.report_type.replace('_',' ')}
+                  </span>
+                  <a href={r.file_url} target="_blank" rel="noopener noreferrer" className="wm-btn-ghost"
+                    style={{ padding:'5px 12px', fontSize:'.75rem', display:'flex', alignItems:'center', gap:5, borderRadius:8, textDecoration:'none' }}>
+                    <Download size={13}/> Download
+                  </a>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* ── Upsell Modal ── */}
       <Dialog open={showUpsellModal} onOpenChange={setShowUpsellModal}>
-        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>{editUpsellId ? 'Edit Upsell' : 'Log Upsell'}</DialogTitle>
-            <DialogDescription>
-              Record an upsell deal for {client.company_name}
-            </DialogDescription>
+            <DialogDescription>Record an upsell deal for {client.company_name}</DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 mt-2">
-            <div className="space-y-2">
-              <Label>Product / Service Sold</Label>
-              <Input placeholder="e.g. SEO Package, Website Redesign"
-                value={upsellForm.product_sold}
-                onChange={e => setUpsellForm(f => ({ ...f, product_sold: e.target.value }))} />
+          <div style={{ display:'flex', flexDirection:'column', gap:12, marginTop:8 }}>
+            <div><label style={lblStyle}>Product / Service Sold</label>
+              <input style={inpStyle} placeholder="e.g. SEO Package" value={upsellForm.product_sold} onChange={e => setUpsellForm(f => ({ ...f, product_sold:e.target.value }))} /></div>
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+              <div><label style={lblStyle}>Date</label><input style={inpStyle} type="date" value={upsellForm.date} onChange={e => setUpsellForm(f => ({ ...f, date:e.target.value }))} /></div>
+              <div><label style={lblStyle}>Currency</label>
+                <select style={selStyle} value={upsellForm.currency} onChange={e => setUpsellForm(f => ({ ...f, currency:e.target.value }))}>
+                  {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
+                </select></div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Date</Label>
-                <Input type="date"
-                  value={upsellForm.date}
-                  onChange={e => setUpsellForm(f => ({ ...f, date: e.target.value }))} />
-              </div>
-              <div className="space-y-2">
-                <Label>Currency</Label>
-                <Select value={upsellForm.currency} onValueChange={v => setUpsellForm(f => ({ ...f, currency: v }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {CURRENCIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Total Cost</Label>
-                <Input type="number" placeholder="0.00"
-                  value={upsellForm.total_cost}
-                  onChange={e => setUpsellForm(f => ({ ...f, total_cost: e.target.value }))} />
-              </div>
-              <div className="space-y-2">
-                <Label>Upfront Amount</Label>
-                <Input type="number" placeholder="0.00"
-                  value={upsellForm.upfront_amount}
-                  onChange={e => setUpsellForm(f => ({ ...f, upfront_amount: e.target.value }))} />
-              </div>
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+              <div><label style={lblStyle}>Total Cost</label><input style={inpStyle} type="number" placeholder="0.00" value={upsellForm.total_cost} onChange={e => setUpsellForm(f => ({ ...f, total_cost:e.target.value }))} /></div>
+              <div><label style={lblStyle}>Upfront Amount</label><input style={inpStyle} type="number" placeholder="0.00" value={upsellForm.upfront_amount} onChange={e => setUpsellForm(f => ({ ...f, upfront_amount:e.target.value }))} /></div>
             </div>
             {upsellForm.total_cost && upsellForm.upfront_amount && (
-              <div className="p-3 bg-muted/50 rounded-lg text-sm">
-                <span className="text-muted-foreground">Remaining Due: </span>
-                <span className="font-bold text-amber-400">
-                  {upsellForm.currency} {(parseFloat(upsellForm.total_cost || '0') - parseFloat(upsellForm.upfront_amount || '0')).toLocaleString()}
+              <div style={{ padding:'10px 14px', borderRadius:9, background:'rgba(251,191,36,.08)', border:'0.5px solid rgba(251,191,36,.2)', fontSize:'.83rem' }}>
+                <span style={{ color:'rgba(148,163,184,.5)' }}>Remaining Due: </span>
+                <span style={{ fontWeight:700, color:'#fbbf24' }}>
+                  {upsellForm.currency} {(parseFloat(upsellForm.total_cost||'0') - parseFloat(upsellForm.upfront_amount||'0')).toLocaleString()}
                 </span>
               </div>
             )}
-            <div className="space-y-2">
-              <Label>Project Status</Label>
-              <Select value={upsellForm.project_status} onValueChange={v => setUpsellForm(f => ({ ...f, project_status: v }))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="completed">Completed</SelectItem>
-                  <SelectItem value="cancelled">Cancelled</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Notes</Label>
-              <Textarea placeholder="Any additional notes..."
-                value={upsellForm.notes}
-                onChange={e => setUpsellForm(f => ({ ...f, notes: e.target.value }))}
-                rows={3} />
-            </div>
-            <div className="flex gap-3 pt-2">
-              <Button variant="outline" className="flex-1" onClick={() => setShowUpsellModal(false)}>Cancel</Button>
-              <Button className="flex-1"
-                disabled={saveUpsell.isPending || !upsellForm.product_sold || !upsellForm.date || !upsellForm.total_cost}
-                onClick={() => saveUpsell.mutate(upsellForm)}>
+            <div><label style={lblStyle}>Project Status</label>
+              <select style={selStyle} value={upsellForm.project_status} onChange={e => setUpsellForm(f => ({ ...f, project_status:e.target.value }))}>
+                <option value="pending">Pending</option>
+                <option value="active">Active</option>
+                <option value="completed">Completed</option>
+                <option value="cancelled">Cancelled</option>
+              </select></div>
+            <div><label style={lblStyle}>Notes</label>
+              <textarea className="wm-input" placeholder="Any additional notes..." value={upsellForm.notes} onChange={e => setUpsellForm(f => ({ ...f, notes:e.target.value }))} rows={3} style={{ height:'auto', resize:'none' }} /></div>
+            <div style={{ display:'flex', gap:10, marginTop:4 }}>
+              <button className="wm-btn-ghost" onClick={() => setShowUpsellModal(false)} style={{ flex:1, height:40 }}>Cancel</button>
+              <button className="wm-btn-primary" style={{ flex:1, height:40 }} disabled={saveUpsell.isPending || !upsellForm.product_sold || !upsellForm.date || !upsellForm.total_cost} onClick={() => saveUpsell.mutate(upsellForm)}>
                 {editUpsellId ? 'Update' : 'Log Upsell'}
-              </Button>
+              </button>
             </div>
           </div>
         </DialogContent>
