@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useForm }             from 'react-hook-form';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+
 import { Loader2 }             from 'lucide-react';
 import { toast }               from 'sonner';
 import type { Client, User }   from '@/types';
@@ -82,15 +82,16 @@ export function EditClientModal({ open, onClose, onSuccess, client, managers }: 
     }
   };
 
-  return (
-    <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Edit Client</DialogTitle>
-          <DialogDescription>Update client details.</DialogDescription>
-        </DialogHeader>
+  if (!open) return null;
 
-        <form onSubmit={handleSubmit(onSubmit)} style={{ display: 'flex', flexDirection: 'column', gap: 14, marginTop: 8 }}>
+  return (
+    <div style={{ position:'fixed', inset:0, zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
+      <div onClick={onClose} style={{ position:'absolute', inset:0, background:'rgba(0,0,0,.75)', backdropFilter:'blur(6px)' }} />
+      <div style={{ position:'relative', zIndex:1, width:'100%', maxWidth:540, maxHeight:'90vh', overflowY:'auto', background:'#0e0e20', border:'1px solid rgba(124,58,237,.3)', borderRadius:18, padding:28, boxShadow:'0 0 60px rgba(124,58,237,.2)' }}>
+        <h2 style={{ fontSize:'1.1rem', fontWeight:700, color:'#f1f5f9', marginBottom:4 }}>Edit Client</h2>
+        <p style={{ fontSize:'.82rem', color:'rgba(148,163,184,.5)', marginBottom:20 }}>Update client details.</p>
+
+        <form onSubmit={handleSubmit(onSubmit)} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
 
           {/* Company Name */}
           <div>
@@ -161,7 +162,7 @@ export function EditClientModal({ open, onClose, onSuccess, client, managers }: 
             </button>
           </div>
         </form>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </div>
   );
 }
