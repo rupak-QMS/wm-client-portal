@@ -6,7 +6,7 @@ interface Log {
   id: string;
   action: string;
   created_at: string;
-  user?: { full_name?: string; avatar_url?: string } | null;
+  user?: { full_name?: string | null; avatar_url?: string | null } | null;
 }
 
 export function ActivityFeed({ logs }: { logs: Log[] }) {
