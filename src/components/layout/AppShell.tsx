@@ -17,7 +17,7 @@ const NAV_MANAGER = [
   { href: '/manager/clients',          icon: Users,           label: 'Clients'          },
   { href: '/manager/reports',          icon: FileText,        label: 'Reports'          },
   { href: '/manager/upsells',          icon: TrendingUp,      label: 'Upsells'          },
-  { href: '/manager/targets',          icon: Target,          label: 'AM Targets'       },
+  { href: '/manager/targets',          icon: Target,          label: 'Targets'          },
   { href: '/manager/approvals',        icon: CheckSquare,     label: 'Approvals'        },
   { href: '/manager/account-managers', icon: UserCheck,       label: 'Account Managers' },
   { href: '/manager/sales-team',       icon: Users,           label: 'Sales Team'       },
