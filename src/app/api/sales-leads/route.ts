@@ -12,14 +12,14 @@ export async function GET(req: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const { searchParams } = new URL(req.url);
-  const status   = searchParams.get('status');
-  const month    = searchParams.get('month');
-  const year     = searchParams.get('year');
-  const leadId   = searchParams.get('id');
+  const status = searchParams.get('status');
+  const month  = searchParams.get('month');
+  const year   = searchParams.get('year');
+  const leadId = searchParams.get('id');
 
   const where: any = {};
   if (leadId) where.id = leadId;
-  if (status) where.status = status;
+  if (status && status !== 'all') where.status = status;
   if (month && year) {
     where.created_at = {
       gte: new Date(`${year}-${String(month).padStart(2,'0')}-01`),
@@ -42,21 +42,15 @@ export async function GET(req: NextRequest) {
       logs: {
         include: { author: { select: { id:true, full_name:true } } },
         orderBy: { created_at: 'desc' },
-        // Sales team sees all their own logs
-        // AM sees all logs (sales history)
-        // After assignment, sales only sees logs they created
       },
     },
     orderBy: { created_at: 'desc' },
   });
 
-  // For sales team: filter logs to only their own after assignment
+  // For sales team: hide logs after handoff (only show their own)
   const filtered = leads.map(lead => {
     if (user.role === 'sales_team' && ['approved','assigned'].includes(lead.status)) {
-      return {
-        ...lead,
-        logs: lead.logs.filter((l: any) => l.created_by === user.id),
-      };
+      return { ...lead, logs: lead.logs.filter((l: any) => l.created_by === user.id) };
     }
     return lead;
   });
@@ -72,9 +66,8 @@ export async function POST(req: NextRequest) {
   const body = await req.json();
   const {
     company_name, contact_person, email, phone, website,
-    service_required, expected_value, currency, sales_stage, notes,
-    // Sale details fields
-    deal_value, upfront_amount, payment_terms, service_agreed,
+    service_required, project_cost, collected_amount,
+    currency, sales_stage, notes,
   } = body;
 
   if (!company_name || !contact_person || !email)
@@ -82,12 +75,14 @@ export async function POST(req: NextRequest) {
 
   const lead = await prisma.salesLead.create({
     data: {
-      created_by: user.id,
-      company_name, contact_person, email,
-      phone, website, service_required,
-      expected_value: deal_value ? parseFloat(deal_value) : expected_value ? parseFloat(expected_value) : null,
-      currency: currency || 'USD',
-      sales_stage: sales_stage || 'prospecting',
+      created_by:       user.id,
+      company_name,     contact_person, email,
+      phone,            website,        service_required,
+      project_cost:     project_cost     ? parseFloat(project_cost)     : null,
+      collected_amount: collected_amount ? parseFloat(collected_amount) : null,
+      currency:         currency || 'USD',
+      sales_stage:      sales_stage || 'prospecting',
+      sales_team_group: (user as any).sales_team_group ?? null,
       notes,
       status: 'draft',
     },
@@ -120,9 +115,9 @@ export async function PATCH(req: NextRequest) {
   }
 
   const updateData: any = { ...rest, updated_at: new Date() };
-  if (status)                        updateData.status           = status;
-  if (rejection_reason)              updateData.rejection_reason = rejection_reason;
-  if (manager_notes !== undefined)   updateData.manager_notes    = manager_notes;
+  if (status)                       updateData.status           = status;
+  if (rejection_reason)             updateData.rejection_reason = rejection_reason;
+  if (manager_notes !== undefined)  updateData.manager_notes    = manager_notes;
   if (['approved','rejected','assigned'].includes(status)) {
     updateData.approved_by = user.id;
     updateData.reviewed_at = new Date();
@@ -135,30 +130,26 @@ export async function PATCH(req: NextRequest) {
     updateData.approved_by = user.id;
     updateData.reviewed_at = new Date();
 
-    // Check if client already exists for this lead
     const existingClient = await (prisma as any).client.findFirst({
-      where: { sales_lead_id: id },
+      where: { email: lead.email },
     });
 
     if (!existingClient) {
-      // Create client record automatically
-      await (prisma as any).client.create({
+      await prisma.client.create({
         data: {
           company_name:             lead.company_name,
           contact_person:           lead.contact_person,
           email:                    lead.email,
-          phone:                    lead.phone,
-          website:                  lead.website,
-          notes:                    lead.notes,
+          phone:                    lead.phone  ?? undefined,
+          website:                  lead.website ?? undefined,
+          notes:                    lead.notes   ?? undefined,
           assigned_account_manager: assigned_am,
           created_by:               lead.created_by,
           status:                   'active',
-          sales_lead_id:            id,
         },
       });
     } else {
-      // Update existing client with AM
-      await (prisma as any).client.update({
+      await prisma.client.update({
         where: { id: existingClient.id },
         data:  { assigned_account_manager: assigned_am },
       });
