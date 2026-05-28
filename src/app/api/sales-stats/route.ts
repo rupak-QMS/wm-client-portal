@@ -60,25 +60,25 @@ export async function GET(req: NextRequest) {
         prisma.salesLead.count({ where: { ...mWhere, status: { in: ['approved','assigned'] } } }),
         prisma.salesLead.aggregate({
           where: { ...mWhere, status: { in: ['approved','assigned'] } },
-          _sum: { expected_value: true },
+          _sum: { collected_amount: true },
         }),
       ]);
       const conversionRate = total > 0 ? Math.round((approved / total) * 100) : 0;
       return {
-        member: m,
+        member:          m,
         total_leads:     total,
         approved_leads:  approved,
-        revenue:         Number(revenue._sum.expected_value ?? 0),
+        revenue:         Number(revenue._sum.collected_amount ?? 0),
         conversion_rate: conversionRate,
       };
     }));
     leaderboard.sort((a, b) => b.approved_leads - a.approved_leads);
   }
 
-  // Revenue from approved leads this month
+  // Total collected from approved leads this month
   const revenueAgg = await prisma.salesLead.aggregate({
     where: { ...where, status: { in: ['approved','assigned'] } },
-    _sum: { expected_value: true },
+    _sum: { collected_amount: true },
   });
 
   const conversionRate = totalLeads > 0 ? Math.round((approvedLeads / totalLeads) * 100) : 0;
@@ -86,12 +86,12 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({
     data: serialize({
       month, year,
-      total_leads:     totalLeads,
-      approved_leads:  approvedLeads,
-      rejected_leads:  rejectedLeads,
-      pending_leads:   pendingLeads,
-      revenue:         Number(revenueAgg._sum.expected_value ?? 0),
-      conversion_rate: conversionRate,
+      total_leads:       totalLeads,
+      approved_leads:    approvedLeads,
+      rejected_leads:    rejectedLeads,
+      pending_leads:     pendingLeads,
+      revenue:           Number(revenueAgg._sum.collected_amount ?? 0),
+      conversion_rate:   conversionRate,
       leaderboard,
       badges,
       performance_notes: performanceNotes,
