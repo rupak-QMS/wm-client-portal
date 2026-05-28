@@ -21,7 +21,7 @@ const NAV_MANAGER = [
   { href: '/manager/approvals',        icon: CheckSquare,     label: 'Approvals'        },
   { href: '/manager/account-managers', icon: UserCheck,       label: 'Account Managers' },
   { href: '/manager/sales-team',       icon: Users,           label: 'Sales Team'       },
-  { href: '/manager/sales-targets',    icon: Target,          label: 'Sales Targets'    },
+
 ];
 
 const NAV_ACCOUNT = [
