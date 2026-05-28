@@ -13,9 +13,9 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
   const { searchParams } = new URL(req.url);
-  const month         = searchParams.get('month');
-  const year          = searchParams.get('year');
-  const memberId      = searchParams.get('member_id');
+  const month    = searchParams.get('month');
+  const year     = searchParams.get('year');
+  const memberId = searchParams.get('member_id');
 
   const where: any = {};
   if (month)    where.month = parseInt(month);
@@ -37,23 +37,21 @@ export async function POST(req: NextRequest) {
   if (!user || user.role !== 'manager')
     return NextResponse.json({ error: 'Only managers can set targets' }, { status: 403 });
 
-  const { sales_member_id, month, year, target_clients, target_revenue, target_deals, currency } = await req.json();
+  const { sales_member_id, month, year, target_revenue, currency } = await req.json();
   if (!sales_member_id || !month || !year)
     return NextResponse.json({ error: 'Missing required fields' }, { status: 422 });
 
   const target = await prisma.salesTarget.upsert({
     where: { sales_member_id_month_year: { sales_member_id, month: parseInt(month), year: parseInt(year) } },
     update: {
-      target_clients: parseInt(target_clients || 0),
       target_revenue: parseFloat(target_revenue || 0),
-      target_deals:   parseInt(target_deals   || 0),
       currency:       currency || 'USD',
     },
     create: {
-      sales_member_id, month: parseInt(month), year: parseInt(year),
-      target_clients: parseInt(target_clients || 0),
+      sales_member_id,
+      month:          parseInt(month),
+      year:           parseInt(year),
       target_revenue: parseFloat(target_revenue || 0),
-      target_deals:   parseInt(target_deals   || 0),
       currency:       currency || 'USD',
       created_by:     user.id,
     },
