@@ -9,7 +9,7 @@ import { toast }                   from 'sonner';
 import {
   LayoutDashboard, Users, FileText, TrendingUp, MessageSquare,
   LogOut, Bell, Search, Menu, X, ChevronRight, Target,
-  CheckSquare, UserCheck, BarChart2,
+  CheckSquare, UserCheck,
 } from 'lucide-react';
 
 const NAV_MANAGER = [
@@ -21,8 +21,6 @@ const NAV_MANAGER = [
   { href: '/manager/approvals',        icon: CheckSquare,     label: 'Approvals'        },
   { href: '/manager/account-managers', icon: UserCheck,       label: 'Account Managers' },
   { href: '/manager/sales-team',       icon: Users,           label: 'Sales Team'       },
-  { href: '/manager/sales-approvals',  icon: CheckSquare,     label: 'Sales Approvals'  },
-  { href: '/manager/sales-analytics',  icon: BarChart2,       label: 'Sales Analytics'  },
   { href: '/manager/sales-targets',    icon: Target,          label: 'Sales Targets'    },
 ];
 
@@ -41,6 +39,7 @@ const NAV_SALES = [
   { href: '/sales/targets',     icon: Target,          label: 'My Targets'  },
   { href: '/sales/performance', icon: TrendingUp,      label: 'Performance' },
 ];
+
 const NAV_CLIENT = [
   { href: '/client/dashboard',  icon: LayoutDashboard, label: 'Dashboard' },
   { href: '/client/reports',    icon: FileText,        label: 'Reports'   },
