@@ -13,9 +13,16 @@ datasource db {
 enum UserRole {
   manager
   account_manager
-  sales_team        // ← NEW
+  sales_team
   client
   @@map("user_role")
+}
+
+enum SalesTeamGroup {
+  aus_nz
+  uk
+  us_canada
+  @@map("sales_team_group")
 }
 
 enum ClientStatus {
@@ -49,7 +56,6 @@ enum ProjectStatus {
   @@map("project_status")
 }
 
-// NEW: lead/approval pipeline status
 enum LeadStatus {
   draft
   pending_approval
@@ -59,7 +65,6 @@ enum LeadStatus {
   @@map("lead_status")
 }
 
-// NEW: sales log types
 enum SalesLogType {
   call_log
   meeting_notes
@@ -71,7 +76,6 @@ enum SalesLogType {
   @@map("sales_log_type")
 }
 
-// NEW: badge types
 enum BadgeType {
   gold
   silver
@@ -86,39 +90,37 @@ enum BadgeType {
 // ── Core models ────────────────────────────────────────
 
 model User {
-  id         String    @id @db.Uuid
-  full_name  String
-  email      String    @unique
-  role       UserRole  @default(client)
-  avatar_url String?
-  created_at DateTime  @default(now()) @db.Timestamptz
-  updated_at DateTime  @updatedAt @db.Timestamptz
+  id               String          @id @db.Uuid
+  full_name        String
+  email            String          @unique
+  role             UserRole        @default(client)
+  avatar_url       String?
+  sales_team_group SalesTeamGroup?
+  created_at       DateTime        @default(now()) @db.Timestamptz
+  updated_at       DateTime        @updatedAt @db.Timestamptz
 
-  // existing
-  revenueTargets        RevenueTarget[] @relation("TargetAM")
-  revenueTargetsCreated RevenueTarget[] @relation("TargetCreator")
-  upsells               Upsell[]        @relation("UpsellAM")
-  clientsCreated        Client[]        @relation("ClientCreatedBy")
-  clientsManaged        Client[]        @relation("ClientAssignedManager")
-  reportsUploaded       Report[]
-  comments              Comment[]
-  messagesSent          Message[]       @relation("MessageSender")
-  messagesReceived      Message[]       @relation("MessageReceiver")
-  deleteRequestsMade    DeleteRequest[] @relation("DeleteRequestRequester")
-  deleteRequestsApproved DeleteRequest[] @relation("DeleteRequestApprover")
-  notifications         Notification[]
-  activityLogs          ActivityLog[]
-
-  // NEW sales relations
-  salesTargets          SalesTarget[]   @relation("SalesTargetMember")
-  salesTargetsCreated   SalesTarget[]   @relation("SalesTargetCreator")
-  salesLeads            SalesLead[]     @relation("LeadCreator")
-  salesLeadsApproved    SalesLead[]     @relation("LeadApprover")
-  salesLeadsAssigned    SalesLead[]     @relation("LeadAssignedAM")
-  salesLogs             SalesLog[]
-  salesBadges           SalesPerformanceBadge[]
-  performanceNotes      SalesPerformanceNote[]  @relation("NoteTarget")
-  performanceNotesBy    SalesPerformanceNote[]  @relation("NoteAuthor")
+  revenueTargets         RevenueTarget[]        @relation("TargetAM")
+  revenueTargetsCreated  RevenueTarget[]        @relation("TargetCreator")
+  upsells                Upsell[]               @relation("UpsellAM")
+  clientsCreated         Client[]               @relation("ClientCreatedBy")
+  clientsManaged         Client[]               @relation("ClientAssignedManager")
+  reportsUploaded        Report[]
+  comments               Comment[]
+  messagesSent           Message[]              @relation("MessageSender")
+  messagesReceived       Message[]              @relation("MessageReceiver")
+  deleteRequestsMade     DeleteRequest[]        @relation("DeleteRequestRequester")
+  deleteRequestsApproved DeleteRequest[]        @relation("DeleteRequestApprover")
+  notifications          Notification[]
+  activityLogs           ActivityLog[]
+  salesTargets           SalesTarget[]          @relation("SalesTargetMember")
+  salesTargetsCreated    SalesTarget[]          @relation("SalesTargetCreator")
+  salesLeads             SalesLead[]            @relation("LeadCreator")
+  salesLeadsApproved     SalesLead[]            @relation("LeadApprover")
+  salesLeadsAssigned     SalesLead[]            @relation("LeadAssignedAM")
+  salesLogs              SalesLog[]
+  salesBadges            SalesPerformanceBadge[]
+  performanceNotes       SalesPerformanceNote[] @relation("NoteTarget")
+  performanceNotesBy     SalesPerformanceNote[] @relation("NoteAuthor")
 
   @@map("users")
 }
@@ -137,11 +139,11 @@ model Client {
   created_at               DateTime     @default(now()) @db.Timestamptz
   updated_at               DateTime     @updatedAt @db.Timestamptz
 
-  upsells        Upsell[]
+  upsells         Upsell[]
   assignedManager User?          @relation("ClientAssignedManager", fields: [assigned_account_manager], references: [id])
-  creator        User            @relation("ClientCreatedBy", fields: [created_by], references: [id])
-  reports        Report[]
-  deleteRequests DeleteRequest[]
+  creator         User           @relation("ClientCreatedBy", fields: [created_by], references: [id])
+  reports         Report[]
+  deleteRequests  DeleteRequest[]
 
   @@map("clients")
 }
@@ -256,8 +258,8 @@ model RevenueTarget {
   created_at         DateTime @default(now()) @db.Timestamptz
   updated_at         DateTime @updatedAt @db.Timestamptz
 
-  accountManager User @relation("TargetAM",      fields: [account_manager_id], references: [id], onDelete: Cascade)
-  creator        User @relation("TargetCreator",  fields: [created_by],         references: [id])
+  accountManager User @relation("TargetAM",     fields: [account_manager_id], references: [id], onDelete: Cascade)
+  creator        User @relation("TargetCreator", fields: [created_by],         references: [id])
 
   @@unique([account_manager_id, month, year])
   @@map("revenue_targets")
@@ -278,23 +280,20 @@ model Upsell {
   created_at         DateTime      @default(now()) @db.Timestamptz
   updated_at         DateTime      @updatedAt @db.Timestamptz
 
-  client         Client @relation(fields: [client_id], references: [id], onDelete: Cascade)
+  client         Client @relation(fields: [client_id],          references: [id], onDelete: Cascade)
   accountManager User   @relation("UpsellAM", fields: [account_manager_id], references: [id])
 
   @@map("upsells")
 }
 
-// ── NEW: Sales Team Models ─────────────────────────────
+// ── Sales Team Models ──────────────────────────────────
 
-// Monthly sales targets per sales team member
 model SalesTarget {
   id              String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
   sales_member_id String   @db.Uuid
   month           Int
   year            Int
-  target_clients  Int      @default(0)   // number of clients to add
-  target_revenue  Decimal  @db.Decimal(12, 2) @default(0)  // revenue target
-  target_deals    Int      @default(0)   // deals to close
+  target_revenue  Decimal  @db.Decimal(12, 2) @default(0)
   currency        String   @default("USD")
   created_by      String   @db.Uuid
   created_at      DateTime @default(now()) @db.Timestamptz
@@ -307,38 +306,38 @@ model SalesTarget {
   @@map("sales_targets")
 }
 
-// Client leads created by sales team
 model SalesLead {
-  id               String     @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  created_by       String     @db.Uuid
+  id               String          @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  created_by       String          @db.Uuid
   company_name     String
   contact_person   String
   email            String
   phone            String?
   website          String?
   service_required String?
-  expected_value   Decimal?   @db.Decimal(12, 2)
-  currency         String     @default("USD")
-  sales_stage      String     @default("prospecting")
-  status           LeadStatus @default(draft)
+  project_cost     Decimal?        @db.Decimal(12, 2)
+  collected_amount Decimal?        @db.Decimal(12, 2)
+  currency         String          @default("USD")
+  sales_stage      String          @default("prospecting")
+  status           LeadStatus      @default(draft)
+  sales_team_group SalesTeamGroup?
   notes            String?
   rejection_reason String?
   manager_notes    String?
-  approved_by      String?    @db.Uuid
-  assigned_am      String?    @db.Uuid
-  reviewed_at      DateTime?  @db.Timestamptz
-  created_at       DateTime   @default(now()) @db.Timestamptz
-  updated_at       DateTime   @updatedAt @db.Timestamptz
+  approved_by      String?         @db.Uuid
+  assigned_am      String?         @db.Uuid
+  reviewed_at      DateTime?       @db.Timestamptz
+  created_at       DateTime        @default(now()) @db.Timestamptz
+  updated_at       DateTime        @updatedAt @db.Timestamptz
 
-  creator    User     @relation("LeadCreator",    fields: [created_by], references: [id])
-  approver   User?    @relation("LeadApprover",   fields: [approved_by], references: [id])
-  assignedAM User?    @relation("LeadAssignedAM", fields: [assigned_am],  references: [id])
+  creator    User      @relation("LeadCreator",    fields: [created_by],  references: [id])
+  approver   User?     @relation("LeadApprover",   fields: [approved_by], references: [id])
+  assignedAM User?     @relation("LeadAssignedAM", fields: [assigned_am], references: [id])
   logs       SalesLog[]
 
   @@map("sales_leads")
 }
 
-// Sales activity logs per lead
 model SalesLog {
   id          String       @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
   lead_id     String       @db.Uuid
@@ -347,16 +346,15 @@ model SalesLog {
   title       String
   content     String
   next_action String?
-  closing_pct Int?         // 0-100 closing probability
+  closing_pct Int?
   created_at  DateTime     @default(now()) @db.Timestamptz
 
-  lead    SalesLead @relation(fields: [lead_id],    references: [id], onDelete: Cascade)
-  author  User      @relation(fields: [created_by], references: [id])
+  lead   SalesLead @relation(fields: [lead_id],    references: [id], onDelete: Cascade)
+  author User      @relation(fields: [created_by], references: [id])
 
   @@map("sales_logs")
 }
 
-// Monthly performance recognition badges
 model SalesPerformanceBadge {
   id              String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
   sales_member_id String    @db.Uuid
@@ -372,20 +370,19 @@ model SalesPerformanceBadge {
   @@map("sales_performance_badges")
 }
 
-// Manager notes on sales member performance
 model SalesPerformanceNote {
-  id              String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  target_user_id  String   @db.Uuid
-  author_id       String   @db.Uuid
-  month           Int
-  year            Int
-  note            String
-  bonus_amount    Decimal? @db.Decimal(12, 2)
-  currency        String   @default("USD")
-  created_at      DateTime @default(now()) @db.Timestamptz
+  id             String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  target_user_id String   @db.Uuid
+  author_id      String   @db.Uuid
+  month          Int
+  year           Int
+  note           String
+  bonus_amount   Decimal? @db.Decimal(12, 2)
+  currency       String   @default("USD")
+  created_at     DateTime @default(now()) @db.Timestamptz
 
   targetUser User @relation("NoteTarget", fields: [target_user_id], references: [id], onDelete: Cascade)
-  author     User @relation("NoteAuthor", fields: [author_id],       references: [id])
+  author     User @relation("NoteAuthor", fields: [author_id],      references: [id])
 
   @@map("sales_performance_notes")
 }
