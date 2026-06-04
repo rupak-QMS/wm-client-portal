@@ -45,7 +45,7 @@ export default function NotepadPage() {
   };
 
   const autosave = (newContent: string, newTitle: string, id: string, currentFiles: NoteFile[]) => {
-    clearTimeout(saveTimer.current);
+    if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
       const updated = currentFiles.map(f =>
         f.id === id ? { ...f, title: newTitle, content: newContent, updated_at: new Date().toISOString() } : f
