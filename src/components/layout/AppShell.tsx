@@ -77,7 +77,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     ?.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase() ?? 'WM';
 
   return (
-    <div style={{ minHeight: '100vh', background: '#06060f' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--bg-base)' }}>
 
       {/* bg grid */}
       <div className="wm-grid-bg" />
@@ -91,6 +91,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         <div key={i} className="wm-orb" style={{
           width: o.w, height: o.h,
           background: `radial-gradient(circle,${o.bg} 0%,transparent 70%)`,
+        opacity: 1,
           top: (o as any).top, left: (o as any).left,
           bottom: (o as any).bottom, right: (o as any).right,
           animation: o.anim,
@@ -109,7 +110,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       <aside className={`wm-sidebar ${open ? 'open' : ''}`}>
 
         {/* Logo */}
-        <div style={{ padding: '22px 18px 18px', borderBottom: '1px solid rgba(124,58,237,.1)' }}>
+        <div style={{ padding: '22px 18px 18px', borderBottom: '1px solid var(--border-subtle)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <div style={{
               width: 36, height: 36, borderRadius: 10, flexShrink: 0,
@@ -119,8 +120,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               boxShadow: '0 0 16px rgba(124,58,237,.45)',
             }}>WM</div>
             <div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: '#f1f5f9', lineHeight: 1.2 }}>Web Maniacs</div>
-              <div style={{ fontSize: 9, color: 'rgba(148,163,184,.4)', letterSpacing: '.06em', marginTop: 1 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.2 }}>Web Maniacs</div>
+              <div style={{ fontSize: 9, color: 'var(--text-muted)', letterSpacing: '.06em', marginTop: 1 }}>
                 {roleLabel} PORTAL
               </div>
             </div>
@@ -129,19 +130,19 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
         {/* User pill */}
         {user && (
-          <div style={{ margin: '12px 12px 0', padding: '10px 12px', borderRadius: 10, background: 'rgba(124,58,237,.08)', border: '0.5px solid rgba(124,58,237,.18)' }}>
+          <div style={{ margin: '12px 12px 0', padding: '10px 12px', borderRadius: 10, background: 'var(--bg-active)', border: '0.5px solid var(--border-active)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
               <div style={{
                 width: 30, height: 30, borderRadius: 8, flexShrink: 0,
                 background: 'linear-gradient(135deg,rgba(124,58,237,.5),rgba(59,130,246,.5))',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 11, fontWeight: 700, color: '#f1f5f9',
+                fontSize: 11, fontWeight: 700, color: '#fff',
               }}>{initials}</div>
               <div style={{ minWidth: 0 }}>
-                <div style={{ fontSize: '.78rem', fontWeight: 600, color: '#f1f5f9', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                <div style={{ fontSize: '.78rem', fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                   {user.full_name}
                 </div>
-                <div style={{ fontSize: '.68rem', color: 'rgba(148,163,184,.45)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                <div style={{ fontSize: '.68rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                   {user.email}
                 </div>
               </div>
@@ -151,7 +152,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
         {/* Nav */}
         <nav style={{ flex: 1, padding: '14px 10px', display: 'flex', flexDirection: 'column', gap: 2, overflowY: 'auto' }}>
-          <div style={{ fontSize: '.62rem', color: 'rgba(100,116,139,.45)', textTransform: 'uppercase', letterSpacing: '.08em', padding: '0 6px', marginBottom: 6 }}>
+          <div style={{ fontSize: '.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '.08em', padding: '0 6px', marginBottom: 6 }}>
             Navigation
           </div>
           {nav.map(({ href, icon: Icon, label }) => {
@@ -223,12 +224,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             </button>
             <button aria-label="Notifications" style={{
               width: 32, height: 32, borderRadius: 8,
-              background: 'rgba(255,255,255,.04)', border: '0.5px solid rgba(255,255,255,.07)',
+              background: 'var(--bg-input)', border: '0.5px solid var(--border-subtle)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               cursor: 'pointer', position: 'relative', color: 'rgba(148,163,184,.55)', transition: 'all .2s',
             }}
-              onMouseEnter={e => { const b = e.currentTarget as HTMLButtonElement; b.style.background = 'rgba(124,58,237,.12)'; b.style.color = '#a78bfa'; }}
-              onMouseLeave={e => { const b = e.currentTarget as HTMLButtonElement; b.style.background = 'rgba(255,255,255,.04)'; b.style.color = 'rgba(148,163,184,.55)'; }}>
+              onMouseEnter={e => { const b = e.currentTarget as HTMLButtonElement; b.style.background = 'var(--bg-hover)'; b.style.color = 'var(--text-nav-active)'; }}
+              onMouseLeave={e => { const b = e.currentTarget as HTMLButtonElement; b.style.background = 'var(--bg-input)'; b.style.color = 'var(--text-secondary)'; }}>
               <Bell size={14} />
               <span style={{ position: 'absolute', top: 7, right: 7, width: 5, height: 5, borderRadius: '50%', background: '#f472b6', boxShadow: '0 0 5px #f472b6', animation: 'dotPulse 2s ease-in-out infinite' }} />
             </button>
