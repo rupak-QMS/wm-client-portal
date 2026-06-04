@@ -22,7 +22,6 @@ const NAV_MANAGER = [
   { href: '/manager/approvals',        icon: CheckSquare,     label: 'Approvals'        },
   { href: '/manager/account-managers', icon: UserCheck,       label: 'Account Managers' },
   { href: '/manager/sales-team',       icon: Users,           label: 'Sales Team'       },
-
 ];
 
 const NAV_ACCOUNT = [
@@ -42,6 +41,11 @@ const NAV_SALES = [
   { href: '/sales/performance', icon: TrendingUp,      label: 'Performance' },
 ];
 
+const NAV_TEAM_LEADER = [
+  { href: '/team-leader/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+  { href: '/team-leader/agents',    icon: Users,           label: 'My Agents' },
+];
+
 const NAV_CLIENT = [
   { href: '/client/dashboard',  icon: LayoutDashboard, label: 'Dashboard' },
   { href: '/client/reports',    icon: FileText,        label: 'Reports'   },
@@ -58,14 +62,16 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const { theme, setTheme } = useTheme();
   const isDark = theme === 'dark';
 
-  const nav = pathname.startsWith('/manager') ? NAV_MANAGER
-            : pathname.startsWith('/account')  ? NAV_ACCOUNT
-            : pathname.startsWith('/sales')    ? NAV_SALES
+  const nav = pathname.startsWith('/manager')     ? NAV_MANAGER
+            : pathname.startsWith('/account')     ? NAV_ACCOUNT
+            : pathname.startsWith('/sales')       ? NAV_SALES
+            : pathname.startsWith('/team-leader') ? NAV_TEAM_LEADER
             : NAV_CLIENT;
 
-  const roleLabel = pathname.startsWith('/manager') ? 'MANAGER'
-                  : pathname.startsWith('/account')  ? 'ACCOUNT MGR'
-                  : pathname.startsWith('/sales')    ? 'SALES TEAM'
+  const roleLabel = pathname.startsWith('/manager')     ? 'MANAGER'
+                  : pathname.startsWith('/account')     ? 'ACCOUNT MGR'
+                  : pathname.startsWith('/sales')       ? 'SALES TEAM'
+                  : pathname.startsWith('/team-leader') ? 'TEAM LEADER'
                   : 'CLIENT';
 
   const handleLogout = async () => {
@@ -92,7 +98,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         <div key={i} className="wm-orb" style={{
           width: o.w, height: o.h,
           background: `radial-gradient(circle,${o.bg} 0%,transparent 70%)`,
-        opacity: 1,
+          opacity: 1,
           top: (o as any).top, left: (o as any).left,
           bottom: (o as any).bottom, right: (o as any).right,
           animation: o.anim,
@@ -210,10 +216,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 transition: 'all .3s', flexShrink: 0, display: 'flex', alignItems: 'center',
                 padding: '0 4px',
               }}>
-              {/* track icons */}
               <Moon size={11} style={{ position:'absolute', left:8, color: isDark ? '#a78bfa' : 'rgba(148,163,184,.3)', transition:'all .3s' }} />
               <Sun  size={11} style={{ position:'absolute', right:8, color: isDark ? 'rgba(148,163,184,.3)' : '#f59e0b', transition:'all .3s' }} />
-              {/* thumb */}
               <div style={{
                 width: 22, height: 22, borderRadius: '50%',
                 background: isDark ? 'linear-gradient(135deg,#7c3aed,#3b82f6)' : 'linear-gradient(135deg,#f59e0b,#f97316)',

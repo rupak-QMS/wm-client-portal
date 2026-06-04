@@ -33,10 +33,17 @@ export async function loginAction(email: string, password: string) {
 
   const profile = await prisma.user.findUnique({ where: { id: user.id } });
 
+  // Block pending agents — sign them out and return an error
+  if ((profile as any)?.status === 'pending') {
+    await supabase.auth.signOut();
+    return { error: 'Your account is pending manager approval. Please wait before logging in.' };
+  }
+
   const dashPath =
-    profile?.role === 'manager'         ? '/manager/dashboard' :
-    profile?.role === 'account_manager' ? '/account/dashboard' :
-    profile?.role === 'sales_team'      ? '/sales/dashboard'   :
+    profile?.role === 'manager'         ? '/manager/dashboard'     :
+    profile?.role === 'account_manager' ? '/account/dashboard'     :
+    profile?.role === 'sales_team'      ? '/sales/dashboard'       :
+    profile?.role === 'team_leader'     ? '/team-leader/dashboard' :
                                           '/client/dashboard';
   redirect(dashPath);
 }
@@ -81,6 +88,7 @@ export async function createUserAction(values: CreateUserFormValues & { sales_te
       full_name:        values.full_name,
       role:             values.role as UserRole,
       sales_team_group: (values.sales_team_group as any) ?? null,
+      status:           'active', // manager-created users are always active
     },
     create: {
       id:               data.user.id,
@@ -88,6 +96,7 @@ export async function createUserAction(values: CreateUserFormValues & { sales_te
       full_name:        values.full_name,
       role:             values.role as UserRole,
       sales_team_group: (values.sales_team_group as any) ?? null,
+      status:           'active',
     },
   });
 
@@ -98,17 +107,16 @@ export async function createUserAction(values: CreateUserFormValues & { sales_te
 }
 
 export async function updateUserAction(values: {
-  id:               string;
-  full_name?:       string;
+  id:                string;
+  full_name?:        string;
   sales_team_group?: string | null;
-  new_password?:    string;
+  new_password?:     string;
 }) {
   const me = await getCurrentUser();
   if (me?.role !== 'manager') return { error: 'Unauthorized' };
 
   const adminClient = getAdminClient();
 
-  // Reset password if provided
   if (values.new_password) {
     const { error } = await adminClient.auth.admin.updateUserById(values.id, {
       password: values.new_password,
@@ -116,12 +124,11 @@ export async function updateUserAction(values: {
     if (error) return { error: error.message };
   }
 
-  // Update profile fields
   await prisma.user.update({
     where: { id: values.id },
     data: {
-      ...(values.full_name        ? { full_name: values.full_name }               : {}),
-      ...(values.sales_team_group !== undefined ? { sales_team_group: values.sales_team_group as any } : {}),
+      ...(values.full_name !== undefined        ? { full_name: values.full_name }                         : {}),
+      ...(values.sales_team_group !== undefined ? { sales_team_group: values.sales_team_group as any }   : {}),
     },
   });
 

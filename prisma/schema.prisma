@@ -14,6 +14,7 @@ enum UserRole {
   manager
   account_manager
   sales_team
+  team_leader       // ← NEW
   client
   @@map("user_role")
 }
@@ -90,14 +91,16 @@ enum BadgeType {
 // ── Core models ────────────────────────────────────────
 
 model User {
-  id               String          @id @db.Uuid
-  full_name        String
-  email            String          @unique
-  role             UserRole        @default(client)
-  avatar_url       String?
-  sales_team_group SalesTeamGroup?
-  created_at       DateTime        @default(now()) @db.Timestamptz
-  updated_at       DateTime        @updatedAt @db.Timestamptz
+  id                String          @id @db.Uuid
+  full_name         String
+  email             String          @unique
+  role              UserRole        @default(client)
+  avatar_url        String?
+  sales_team_group  SalesTeamGroup?
+  status            String          @default("active")   // "active" | "pending"
+  created_by_leader String?         @db.Uuid
+  created_at        DateTime        @default(now()) @db.Timestamptz
+  updated_at        DateTime        @updatedAt @db.Timestamptz
 
   revenueTargets         RevenueTarget[]        @relation("TargetAM")
   revenueTargetsCreated  RevenueTarget[]        @relation("TargetCreator")
@@ -140,8 +143,8 @@ model Client {
   updated_at               DateTime     @updatedAt @db.Timestamptz
 
   upsells         Upsell[]
-  assignedManager User?          @relation("ClientAssignedManager", fields: [assigned_account_manager], references: [id])
-  creator         User           @relation("ClientCreatedBy", fields: [created_by], references: [id])
+  assignedManager User?           @relation("ClientAssignedManager", fields: [assigned_account_manager], references: [id])
+  creator         User            @relation("ClientCreatedBy", fields: [created_by], references: [id])
   reports         Report[]
   deleteRequests  DeleteRequest[]
 
@@ -330,9 +333,9 @@ model SalesLead {
   created_at       DateTime        @default(now()) @db.Timestamptz
   updated_at       DateTime        @updatedAt @db.Timestamptz
 
-  creator    User      @relation("LeadCreator",    fields: [created_by],  references: [id])
-  approver   User?     @relation("LeadApprover",   fields: [approved_by], references: [id])
-  assignedAM User?     @relation("LeadAssignedAM", fields: [assigned_am], references: [id])
+  creator    User       @relation("LeadCreator",    fields: [created_by],  references: [id])
+  approver   User?      @relation("LeadApprover",   fields: [approved_by], references: [id])
+  assignedAM User?      @relation("LeadAssignedAM", fields: [assigned_am], references: [id])
   logs       SalesLog[]
 
   @@map("sales_leads")

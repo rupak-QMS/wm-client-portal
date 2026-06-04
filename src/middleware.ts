@@ -7,6 +7,8 @@ const PUBLIC_ROUTES = ['/', '/login', '/forgot-password'];
 const ROLE_ROUTES: Record<string, string[]> = {
   manager:         ['/manager'],
   account_manager: ['/account'],
+  sales_team:      ['/sales'],
+  team_leader:     ['/team-leader'],
   client:          ['/client'],
 };
 
