@@ -735,3 +735,9 @@ body {
 .light [style*="color: #a78bfa"] { color: #5b4b9e !important; }
 .light [style*="color:#f472b6"],
 .light [style*="color: #f472b6"] { color: #9d174d !important; }
+
+/* ══ PEARL MIST — FORCE DEEP PURPLE ON EVERYTHING ══ */
+.light * { color: #2d2640 !important; }
+.light .wm-btn-primary * { color: #ffffff !important; }
+.light .wm-btn-primary   { color: #ffffff !important; }
+.light a { color: #5b4b9e !important; }
