@@ -56,7 +56,7 @@ export async function forgotPasswordAction(email: string) {
   return { success: true };
 }
 
-export async function createUserAction(values: CreateUserFormValues) {
+export async function createUserAction(values: CreateUserFormValues & { sales_team_group?: string }) {
   const me = await getCurrentUser();
   if (me?.role !== 'manager') return { error: 'Unauthorized' };
 
@@ -77,17 +77,55 @@ export async function createUserAction(values: CreateUserFormValues) {
 
   await prisma.user.upsert({
     where:  { id: data.user.id },
-    update: { full_name: values.full_name, role: values.role as UserRole },
+    update: {
+      full_name:        values.full_name,
+      role:             values.role as UserRole,
+      sales_team_group: (values.sales_team_group as any) ?? null,
+    },
     create: {
-      id:        data.user.id,
-      email:     values.email,
-      full_name: values.full_name,
-      role:      values.role as UserRole,
+      id:               data.user.id,
+      email:            values.email,
+      full_name:        values.full_name,
+      role:             values.role as UserRole,
+      sales_team_group: (values.sales_team_group as any) ?? null,
     },
   });
 
+  revalidatePath('/manager/sales-team');
   revalidatePath('/manager/account-managers');
   revalidatePath('/manager/clients');
+  return { success: true };
+}
+
+export async function updateUserAction(values: {
+  id:               string;
+  full_name?:       string;
+  sales_team_group?: string | null;
+  new_password?:    string;
+}) {
+  const me = await getCurrentUser();
+  if (me?.role !== 'manager') return { error: 'Unauthorized' };
+
+  const adminClient = getAdminClient();
+
+  // Reset password if provided
+  if (values.new_password) {
+    const { error } = await adminClient.auth.admin.updateUserById(values.id, {
+      password: values.new_password,
+    });
+    if (error) return { error: error.message };
+  }
+
+  // Update profile fields
+  await prisma.user.update({
+    where: { id: values.id },
+    data: {
+      ...(values.full_name        ? { full_name: values.full_name }               : {}),
+      ...(values.sales_team_group !== undefined ? { sales_team_group: values.sales_team_group as any } : {}),
+    },
+  });
+
+  revalidatePath('/manager/sales-team');
   return { success: true };
 }
 
@@ -100,5 +138,6 @@ export async function deleteUserAction(userId: string) {
   await prisma.user.delete({ where: { id: userId } });
 
   revalidatePath('/manager/account-managers');
+  revalidatePath('/manager/sales-team');
   return { success: true };
 }

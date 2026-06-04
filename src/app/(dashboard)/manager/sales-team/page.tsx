@@ -1,9 +1,9 @@
 'use client';
 import { useState }                              from 'react';
 import { useQuery, useQueryClient }              from '@tanstack/react-query';
-import { UserPlus, Mail, Trash2, Users }         from 'lucide-react';
+import { UserPlus, Mail, Trash2, Users, Pencil } from 'lucide-react';
 import { formatTime }                            from '@/lib/utils';
-import { createUserAction, deleteUserAction }    from '@/lib/auth';
+import { createUserAction, deleteUserAction, updateUserAction } from '@/lib/auth';
 import { toast }                                 from 'sonner';
 import { ConfirmDialog }                         from '@/components/shared/ConfirmDialog';
 
@@ -26,11 +26,13 @@ const lbl: React.CSSProperties = { fontSize:'.75rem', color:'rgba(148,163,184,.5
 export default function SalesTeamPage() {
   const qc = useQueryClient();
   const [filterTeam, setFilterTeam] = useState<string>('all');
-  const [showModal,  setShowModal]  = useState(false);
-  const [confirmId,  setConfirmId]  = useState<string|null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [loading,    setLoading]    = useState(false);
-  const [form, setForm] = useState({ full_name:'', email:'', password:'', sales_team_group:'' });
+  const [showModal,   setShowModal]   = useState(false);
+  const [editMember,  setEditMember]  = useState<any>(null);
+  const [confirmId,   setConfirmId]   = useState<string|null>(null);
+  const [isDeleting,  setIsDeleting]  = useState(false);
+  const [loading,     setLoading]     = useState(false);
+  const [form,  setForm]  = useState({ full_name:'', email:'', password:'', sales_team_group:'' });
+  const [eForm, setEForm] = useState({ full_name:'', sales_team_group:'', new_password:'' });
 
   const { data: members = [], isLoading } = useQuery({
     queryKey: ['sales-members'],
@@ -55,6 +57,23 @@ export default function SalesTeamPage() {
     qc.invalidateQueries({ queryKey: ['sales-members'] });
     setShowModal(false);
     setForm({ full_name:'', email:'', password:'', sales_team_group:'' });
+  };
+
+  const handleEdit = async () => {
+    if (!editMember) return;
+    setLoading(true);
+    const result = await updateUserAction({
+      id:               editMember.id,
+      full_name:        eForm.full_name || undefined,
+      sales_team_group: eForm.sales_team_group || null,
+      new_password:     eForm.new_password || undefined,
+    });
+    setLoading(false);
+    if (result?.error) { toast.error(result.error); return; }
+    toast.success('Member updated!');
+    qc.invalidateQueries({ queryKey: ['sales-members'] });
+    setEditMember(null);
+    setEForm({ full_name:'', sales_team_group:'', new_password:'' });
   };
 
   const handleDelete = async (id: string) => {
@@ -143,12 +162,20 @@ export default function SalesTeamPage() {
                       </td>
                       <td style={{ fontSize:'.8rem', color:'rgba(148,163,184,.45)' }}>{formatTime(m.created_at)}</td>
                       <td style={{ textAlign:'right' }}>
-                        <button onClick={() => setConfirmId(m.id)}
-                          style={{ width:30, height:30, borderRadius:7, border:'none', background:'rgba(255,255,255,.04)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'rgba(148,163,184,.4)', transition:'all .2s', marginLeft:'auto' }}
-                          onMouseEnter={e => { const b=e.currentTarget as HTMLButtonElement; b.style.background='rgba(248,113,113,.12)'; b.style.color='#f87171'; }}
-                          onMouseLeave={e => { const b=e.currentTarget as HTMLButtonElement; b.style.background='rgba(255,255,255,.04)'; b.style.color='rgba(148,163,184,.4)'; }}>
-                          <Trash2 size={13}/>
-                        </button>
+                        <div style={{ display:'flex', gap:6, justifyContent:'flex-end' }}>
+                          <button onClick={() => { setEditMember(m); setEForm({ full_name:m.full_name, sales_team_group:m.sales_team_group??'', new_password:'' }); }}
+                            style={{ width:30, height:30, borderRadius:7, border:'none', background:'rgba(255,255,255,.04)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'rgba(148,163,184,.4)', transition:'all .2s' }}
+                            onMouseEnter={e => { const b=e.currentTarget as HTMLButtonElement; b.style.background='rgba(167,139,250,.12)'; b.style.color='#a78bfa'; }}
+                            onMouseLeave={e => { const b=e.currentTarget as HTMLButtonElement; b.style.background='rgba(255,255,255,.04)'; b.style.color='rgba(148,163,184,.4)'; }}>
+                            <Pencil size={13}/>
+                          </button>
+                          <button onClick={() => setConfirmId(m.id)}
+                            style={{ width:30, height:30, borderRadius:7, border:'none', background:'rgba(255,255,255,.04)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'rgba(148,163,184,.4)', transition:'all .2s' }}
+                            onMouseEnter={e => { const b=e.currentTarget as HTMLButtonElement; b.style.background='rgba(248,113,113,.12)'; b.style.color='#f87171'; }}
+                            onMouseLeave={e => { const b=e.currentTarget as HTMLButtonElement; b.style.background='rgba(255,255,255,.04)'; b.style.color='rgba(148,163,184,.4)'; }}>
+                            <Trash2 size={13}/>
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -190,6 +217,40 @@ export default function SalesTeamPage() {
                 <button className="wm-btn-ghost" onClick={() => setShowModal(false)} style={{ flex:1, height:40 }}>Cancel</button>
                 <button className="wm-btn-primary" style={{ flex:1, height:40 }} disabled={loading} onClick={handleCreate}>
                   {loading ? 'Creating...' : 'Create Member'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Modal */}
+      {editMember && (
+        <div style={{ position:'fixed', inset:0, zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
+          <div onClick={() => setEditMember(null)} style={{ position:'absolute', inset:0, background:'rgba(0,0,0,.75)', backdropFilter:'blur(6px)' }} />
+          <div style={{ position:'relative', zIndex:1, width:'100%', maxWidth:440, background:'#0e0e20', border:'1px solid rgba(124,58,237,.3)', borderRadius:18, padding:28 }}>
+            <h2 style={{ fontSize:'1.05rem', fontWeight:700, color:'#f1f5f9', marginBottom:4 }}>Edit Member</h2>
+            <p style={{ fontSize:'.82rem', color:'rgba(148,163,184,.5)', marginBottom:20 }}>{editMember.email}</p>
+            <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+              <div>
+                <label style={lbl}>Full Name</label>
+                <input style={inp} value={eForm.full_name} onChange={e => setEForm(f=>({...f,full_name:e.target.value}))} placeholder="Full name" />
+              </div>
+              <div>
+                <label style={lbl}>Sales Team</label>
+                <select style={sel} value={eForm.sales_team_group} onChange={e => setEForm(f=>({...f,sales_team_group:e.target.value}))}>
+                  <option value="">Unassigned</option>
+                  {TEAMS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={lbl}>New Password (leave blank to keep current)</label>
+                <input style={inp} type="password" value={eForm.new_password} onChange={e => setEForm(f=>({...f,new_password:e.target.value}))} placeholder="Min. 8 characters" />
+              </div>
+              <div style={{ display:'flex', gap:10, marginTop:4 }}>
+                <button className="wm-btn-ghost" onClick={() => setEditMember(null)} style={{ flex:1, height:40 }}>Cancel</button>
+                <button className="wm-btn-primary" style={{ flex:1, height:40 }} disabled={loading} onClick={handleEdit}>
+                  {loading ? 'Saving...' : 'Save Changes'}
                 </button>
               </div>
             </div>
