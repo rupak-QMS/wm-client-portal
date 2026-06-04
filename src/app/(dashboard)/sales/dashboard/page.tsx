@@ -8,13 +8,13 @@ const MONTHS = ['January','February','March','April','May','June','July','August
 const NOW = new Date();
 
 const BADGE_STYLE: Record<string, { bg:string; color:string; icon:string }> = {
-  gold:             { bg:'rgba(251,191,36,.12)',  color:'#fbbf24', icon:'🥇' },
-  silver:           { bg:'rgba(148,163,184,.12)', color:'#94a3b8', icon:'🥈' },
-  bronze:           { bg:'rgba(180,120,60,.12)',  color:'#b47c3c', icon:'🥉' },
-  top_closer:       { bg:'rgba(52,211,153,.12)',  color:'#34d399', icon:'🏆' },
-  highest_revenue:  { bg:'rgba(96,165,250,.12)',  color:'#60a5fa', icon:'💰' },
-  most_clients:     { bg:'rgba(167,139,250,.12)', color:'#a78bfa', icon:'👥' },
-  best_conversion:  { bg:'rgba(244,114,182,.12)', color:'#f472b6', icon:'🎯' },
+  gold:            { bg:'rgba(251,191,36,.12)',  color:'#fbbf24', icon:'🥇' },
+  silver:          { bg:'rgba(148,163,184,.12)', color:'#94a3b8', icon:'🥈' },
+  bronze:          { bg:'rgba(180,120,60,.12)',  color:'#b47c3c', icon:'🥉' },
+  top_closer:      { bg:'rgba(52,211,153,.12)',  color:'#34d399', icon:'🏆' },
+  highest_revenue: { bg:'rgba(96,165,250,.12)',  color:'#60a5fa', icon:'💰' },
+  most_clients:    { bg:'rgba(167,139,250,.12)', color:'#a78bfa', icon:'👥' },
+  best_conversion: { bg:'rgba(244,114,182,.12)', color:'#f472b6', icon:'🎯' },
 };
 
 export default function SalesDashboard() {
@@ -26,21 +26,21 @@ export default function SalesDashboard() {
     queryFn:  async () => (await (await fetch(`/api/sales-stats?month=${month}&year=${year}`)).json()).data,
   });
 
-  const { data: target } = useQuery({
+  const { data: targetData } = useQuery({
     queryKey: ['sales-targets', month, year],
     queryFn:  async () => (await (await fetch(`/api/sales-targets?month=${month}&year=${year}`)).json()).data ?? [],
   });
 
-  const myTarget   = target?.[0];
-  const achieved   = stats?.approved_leads  ?? 0;
-  const tClients   = myTarget?.target_clients ?? 0;
-  const tRevenue   = myTarget?.target_revenue ?? 0;
+  const myTarget   = targetData?.[0];
+  const tRevenue   = parseFloat(myTarget?.target_revenue ?? 0);
   const revenue    = stats?.revenue ?? 0;
-  const pctClients = tClients > 0 ? Math.min((achieved / tClients) * 100, 100) : 0;
-  const pctRevenue = tRevenue > 0 ? Math.min((revenue  / tRevenue) * 100, 100) : 0;
+  const pctRevenue = tRevenue > 0 ? Math.min((revenue / tRevenue) * 100, 100) : 0;
+  const pctColor   = pctRevenue >= 100 ? '#34d399' : pctRevenue >= 60 ? '#60a5fa' : pctRevenue >= 30 ? '#fbbf24' : '#f87171';
 
   return (
     <div className="wm-page-inner">
+
+      {/* Header */}
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:28, flexWrap:'wrap', gap:12 }} className="wm-fade-up">
         <div>
           <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:6 }}>
@@ -62,6 +62,7 @@ export default function SalesDashboard() {
         </div>
       </div>
 
+      {/* Stat cards */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))', gap:14, marginBottom:24 }} className="wm-fade-up">
         <StatsCard title="Leads Added"     value={stats?.total_leads    ?? '—'} icon={Users}       color="blue"   />
         <StatsCard title="Approved"        value={stats?.approved_leads ?? '—'} icon={CheckCircle} color="green"  />
@@ -71,35 +72,41 @@ export default function SalesDashboard() {
         <StatsCard title="Conversion Rate" value={`${stats?.conversion_rate ?? 0}%`}            icon={BarChart2}  color="pink"   />
       </div>
 
+      {/* Revenue target progress */}
       {myTarget && (
         <div className="wm-card wm-fade-up-2" style={{ padding:'22px 24px', marginBottom:20 }}>
-          <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:18 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:20 }}>
             <Target size={15} style={{ color:'#a78bfa' }} />
-            <p style={{ fontSize:'.95rem', fontWeight:600, color:'#f1f5f9' }}>Monthly Target Progress</p>
+            <p style={{ fontSize:'.95rem', fontWeight:600, color:'#f1f5f9' }}>Monthly Revenue Target</p>
+            <span style={{ marginLeft:'auto', fontSize:'.82rem', fontWeight:700, color:pctColor }}>{pctRevenue.toFixed(1)}%</span>
           </div>
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:20 }}>
-            {[
-              { label:'Clients Target', achieved, target:tClients, pct:pctClients, unit:'', color:'#a78bfa' },
-              { label:'Revenue Target', achieved:revenue, target:tRevenue, pct:pctRevenue, unit:'$', color:'#34d399' },
-            ].map(({ label, achieved:ach, target:tgt, pct, unit, color }) => (
-              <div key={label}>
-                <div style={{ display:'flex', justifyContent:'space-between', marginBottom:6 }}>
-                  <span style={{ fontSize:'.78rem', color:'rgba(148,163,184,.55)' }}>{label}</span>
-                  <span style={{ fontSize:'.78rem', fontWeight:600, color }}>{pct.toFixed(0)}%</span>
-                </div>
-                <div style={{ height:6, borderRadius:99, background:'rgba(255,255,255,.06)', overflow:'hidden', marginBottom:6 }}>
-                  <div style={{ height:'100%', width:`${pct}%`, borderRadius:99, background:color, transition:'width .6s' }} />
-                </div>
-                <div style={{ display:'flex', justifyContent:'space-between', fontSize:'.72rem', color:'rgba(148,163,184,.4)' }}>
-                  <span>{unit}{ach.toLocaleString()} achieved</span>
-                  <span>Target: {unit}{tgt.toLocaleString()}</span>
-                </div>
-              </div>
-            ))}
+
+          {/* Progress bar */}
+          <div style={{ height:8, borderRadius:99, background:'rgba(255,255,255,.06)', overflow:'hidden', marginBottom:12 }}>
+            <div style={{ height:'100%', width:`${pctRevenue}%`, borderRadius:99, background:`linear-gradient(90deg,${pctColor}88,${pctColor})`, transition:'width .8s ease' }} />
           </div>
+
+          <div style={{ display:'flex', justifyContent:'space-between', fontSize:'.78rem' }}>
+            <span style={{ color:'rgba(148,163,184,.55)' }}>
+              Collected: <strong style={{ color:'#34d399' }}>{myTarget.currency} {revenue.toLocaleString()}</strong>
+            </span>
+            <span style={{ color:'rgba(148,163,184,.55)' }}>
+              Target: <strong style={{ color:'#f1f5f9' }}>{myTarget.currency} {tRevenue.toLocaleString()}</strong>
+            </span>
+            <span style={{ color:'rgba(148,163,184,.55)' }}>
+              Remaining: <strong style={{ color:'#fbbf24' }}>{myTarget.currency} {Math.max(tRevenue - revenue, 0).toLocaleString()}</strong>
+            </span>
+          </div>
+
+          {pctRevenue >= 100 && (
+            <div style={{ marginTop:14, padding:'10px', borderRadius:10, background:'rgba(52,211,153,.08)', border:'0.5px solid rgba(52,211,153,.25)', textAlign:'center', fontSize:'.85rem', color:'#34d399', fontWeight:600 }}>
+              🎉 Target Achieved! Great work this month!
+            </div>
+          )}
         </div>
       )}
 
+      {/* Badges */}
       {stats?.badges?.length > 0 && (
         <div className="wm-card wm-fade-up-2" style={{ padding:'22px 24px', marginBottom:20 }}>
           <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:16 }}>
@@ -123,6 +130,7 @@ export default function SalesDashboard() {
         </div>
       )}
 
+      {/* Manager notes */}
       {stats?.performance_notes?.length > 0 && (
         <div className="wm-card wm-fade-up-3" style={{ padding:'22px 24px' }}>
           <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:16 }}>
