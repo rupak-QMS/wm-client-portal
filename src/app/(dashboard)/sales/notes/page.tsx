@@ -19,7 +19,7 @@ export default function NotepadPage() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [content, setContent]   = useState('');
   const [title, setTitle]       = useState('');
-  const saveTimer               = useRef<ReturnType<typeof setTimeout>>();
+  const saveTimer               = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const saved = load();
