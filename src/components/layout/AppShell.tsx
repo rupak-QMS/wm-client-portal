@@ -6,10 +6,11 @@ import { usePathname, useRouter }  from 'next/navigation';
 import { useAuthStore }            from '@/store/authStore';
 import { createClient }            from '@/lib/supabase/client';
 import { toast }                   from 'sonner';
+import { useTheme } from 'next-themes';
 import {
   LayoutDashboard, Users, FileText, TrendingUp, MessageSquare,
   LogOut, Bell, Search, Menu, X, ChevronRight, Target,
-  CheckSquare, UserCheck,
+  CheckSquare, UserCheck, Sun, Moon,
 } from 'lucide-react';
 
 const NAV_MANAGER = [
@@ -53,6 +54,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const user     = useAuthStore(s => s.user);
   const supabase = createClient();
   const [open, setOpen] = useState(false);
+  const { theme, setTheme } = useTheme();
+  const isDark = theme === 'dark';
 
   const nav = pathname.startsWith('/manager') ? NAV_MANAGER
             : pathname.startsWith('/account')  ? NAV_ACCOUNT
@@ -193,6 +196,31 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            {/* Theme toggle */}
+            <button
+              aria-label="Toggle theme"
+              onClick={() => setTheme(isDark ? 'light' : 'dark')}
+              style={{
+                width: 60, height: 32, borderRadius: 99,
+                background: isDark ? 'rgba(124,58,237,.2)' : 'rgba(99,102,241,.1)',
+                border: `1px solid ${isDark ? 'rgba(124,58,237,.35)' : 'rgba(99,102,241,.25)'}`,
+                cursor: 'pointer', position: 'relative',
+                transition: 'all .3s', flexShrink: 0, display: 'flex', alignItems: 'center',
+                padding: '0 4px',
+              }}>
+              {/* track icons */}
+              <Moon size={11} style={{ position:'absolute', left:8, color: isDark ? '#a78bfa' : 'rgba(148,163,184,.3)', transition:'all .3s' }} />
+              <Sun  size={11} style={{ position:'absolute', right:8, color: isDark ? 'rgba(148,163,184,.3)' : '#f59e0b', transition:'all .3s' }} />
+              {/* thumb */}
+              <div style={{
+                width: 22, height: 22, borderRadius: '50%',
+                background: isDark ? 'linear-gradient(135deg,#7c3aed,#3b82f6)' : 'linear-gradient(135deg,#f59e0b,#f97316)',
+                boxShadow: isDark ? '0 0 8px rgba(124,58,237,.5)' : '0 0 8px rgba(245,158,11,.4)',
+                position: 'absolute',
+                left: isDark ? 4 : 34,
+                transition: 'left .3s cubic-bezier(.34,1.56,.64,1)',
+              }} />
+            </button>
             <button aria-label="Notifications" style={{
               width: 32, height: 32, borderRadius: 8,
               background: 'rgba(255,255,255,.04)', border: '0.5px solid rgba(255,255,255,.07)',
