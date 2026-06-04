@@ -1,252 +1,515 @@
-'use client';
-
-import { useState }               from 'react';
-import Link                        from 'next/link';
-import { usePathname, useRouter }  from 'next/navigation';
-import { useAuthStore }            from '@/store/authStore';
-import { createClient }            from '@/lib/supabase/client';
-import { toast }                   from 'sonner';
-import { useTheme } from 'next-themes';
-import {
-  LayoutDashboard, Users, FileText, TrendingUp, MessageSquare,
-  LogOut, Bell, Search, Menu, X, ChevronRight, Target,
-  CheckSquare, UserCheck, Sun, Moon,
-} from 'lucide-react';
-
-const NAV_MANAGER = [
-  { href: '/manager/dashboard',        icon: LayoutDashboard, label: 'Dashboard'        },
-  { href: '/manager/clients',          icon: Users,           label: 'Clients'          },
-  { href: '/manager/reports',          icon: FileText,        label: 'Reports'          },
-  { href: '/manager/upsells',          icon: TrendingUp,      label: 'Upsells'          },
-  { href: '/manager/targets',          icon: Target,          label: 'Targets'          },
-  { href: '/manager/approvals',        icon: CheckSquare,     label: 'Approvals'        },
-  { href: '/manager/account-managers', icon: UserCheck,       label: 'Account Managers' },
-  { href: '/manager/sales-team',       icon: Users,           label: 'Sales Team'       },
-
-];
-
-const NAV_ACCOUNT = [
-  { href: '/account/dashboard', icon: LayoutDashboard, label: 'Dashboard'  },
-  { href: '/account/clients',   icon: Users,           label: 'My Clients' },
-  { href: '/account/reports',   icon: FileText,        label: 'Reports'    },
-  { href: '/account/upsells',   icon: TrendingUp,      label: 'Upsells'    },
-  { href: '/account/chat',      icon: MessageSquare,   label: 'Chat'       },
-];
-
-const NAV_SALES = [
-  { href: '/sales/dashboard',   icon: LayoutDashboard, label: 'Dashboard'   },
-  { href: '/sales/leads',       icon: Users,           label: 'My Sales'    },
-  { href: '/sales/team',        icon: UserCheck,       label: 'My Team'     },
-  { href: '/sales/targets',     icon: Target,          label: 'My Targets'  },
-  { href: '/sales/performance', icon: TrendingUp,      label: 'Performance' },
-];
-
-const NAV_CLIENT = [
-  { href: '/client/dashboard',  icon: LayoutDashboard, label: 'Dashboard' },
-  { href: '/client/reports',    icon: FileText,        label: 'Reports'   },
-  { href: '/client/messages',   icon: MessageSquare,   label: 'Messages'  },
-  { href: '/client/documents',  icon: FileText,        label: 'Documents' },
-];
-
-export default function AppShell({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
-  const router   = useRouter();
-  const user     = useAuthStore(s => s.user);
-  const supabase = createClient();
-  const [open, setOpen] = useState(false);
-  const { theme, setTheme } = useTheme();
-  const isDark = theme === 'dark';
-
-  const nav = pathname.startsWith('/manager') ? NAV_MANAGER
-            : pathname.startsWith('/account')  ? NAV_ACCOUNT
-            : pathname.startsWith('/sales')    ? NAV_SALES
-            : NAV_CLIENT;
-
-  const roleLabel = pathname.startsWith('/manager') ? 'MANAGER'
-                  : pathname.startsWith('/account')  ? 'ACCOUNT MGR'
-                  : pathname.startsWith('/sales')    ? 'SALES TEAM'
-                  : 'CLIENT';
-
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    toast.success('Signed out');
-    router.push('/login');
-  };
-
-  const initials = user?.full_name
-    ?.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase() ?? 'WM';
-
-  return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg-base)' }}>
-
-      {/* bg grid */}
-      <div className="wm-grid-bg" />
-
-      {/* orbs */}
-      {[
-        { w:400, h:400, bg:'rgba(124,58,237,.16)', top:-100,  left:-80,   anim:'float1 10s ease-in-out infinite' },
-        { w:300, h:300, bg:'rgba(59,130,246,.12)', bottom:-60, right:180, anim:'float2 13s ease-in-out infinite' },
-        { w:200, h:200, bg:'rgba(236,72,153,.1)',  top:300,   right:50,   anim:'float3 15s ease-in-out infinite' },
-      ].map((o, i) => (
-        <div key={i} className="wm-orb" style={{
-          width: o.w, height: o.h,
-          background: `radial-gradient(circle,${o.bg} 0%,transparent 70%)`,
-        opacity: 1,
-          top: (o as any).top, left: (o as any).left,
-          bottom: (o as any).bottom, right: (o as any).right,
-          animation: o.anim,
-        }} />
-      ))}
-
-      {/* mobile overlay */}
-      {open && (
-        <div onClick={() => setOpen(false)} style={{
-          position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)',
-          zIndex: 49, backdropFilter: 'blur(4px)', pointerEvents: 'auto',
-        }} />
-      )}
-
-      {/* ── SIDEBAR ── */}
-      <aside className={`wm-sidebar ${open ? 'open' : ''}`}>
-
-        {/* Logo */}
-        <div style={{ padding: '22px 18px 18px', borderBottom: '1px solid var(--border-subtle)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{
-              width: 36, height: 36, borderRadius: 10, flexShrink: 0,
-              background: 'linear-gradient(135deg,#7c3aed,#3b82f6)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 12, fontWeight: 800, color: '#fff',
-              boxShadow: '0 0 16px rgba(124,58,237,.45)',
-            }}>WM</div>
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.2 }}>Web Maniacs</div>
-              <div style={{ fontSize: 9, color: 'var(--text-muted)', letterSpacing: '.06em', marginTop: 1 }}>
-                {roleLabel} PORTAL
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* User pill */}
-        {user && (
-          <div style={{ margin: '12px 12px 0', padding: '10px 12px', borderRadius: 10, background: 'var(--bg-active)', border: '0.5px solid var(--border-active)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
-              <div style={{
-                width: 30, height: 30, borderRadius: 8, flexShrink: 0,
-                background: 'linear-gradient(135deg,rgba(124,58,237,.5),rgba(59,130,246,.5))',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 11, fontWeight: 700, color: '#fff',
-              }}>{initials}</div>
-              <div style={{ minWidth: 0 }}>
-                <div style={{ fontSize: '.78rem', fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {user.full_name}
-                </div>
-                <div style={{ fontSize: '.68rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {user.email}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Nav */}
-        <nav style={{ flex: 1, padding: '14px 10px', display: 'flex', flexDirection: 'column', gap: 2, overflowY: 'auto' }}>
-          <div style={{ fontSize: '.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '.08em', padding: '0 6px', marginBottom: 6 }}>
-            Navigation
-          </div>
-          {nav.map(({ href, icon: Icon, label }) => {
-            const active = pathname === href || pathname.startsWith(href + '/');
-            return (
-              <Link key={href} href={href}
-                className={`wm-nav-item ${active ? 'active' : ''}`}
-                onClick={() => setOpen(false)}>
-                <Icon size={15} aria-hidden />
-                {label}
-                {active && <ChevronRight size={11} style={{ marginLeft: 'auto', opacity: .5 }} />}
-              </Link>
-            );
-          })}
-        </nav>
-
-        {/* Sign out */}
-        <div style={{ padding: '10px', borderTop: '1px solid rgba(124,58,237,.08)' }}>
-          <button className="wm-nav-item" onClick={handleLogout}
-            style={{ color: 'rgba(248,113,113,.65)', width: '100%' }}>
-            <LogOut size={15} aria-hidden />
-            Sign out
-          </button>
-        </div>
-      </aside>
-
-      {/* ── MAIN ── */}
-      <div className="wm-page">
-
-        {/* Topbar */}
-        <header className="wm-topbar">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <button onClick={() => setOpen(v => !v)} className="mobile-menu-btn"
-              style={{ background: 'none', border: 'none', color: 'rgba(148,163,184,.6)', cursor: 'pointer', padding: 4, display: 'none' }}
-              aria-label="Toggle menu">
-              {open ? <X size={20} /> : <Menu size={20} />}
-            </button>
-            <div style={{ position: 'relative' }}>
-              <Search size={13} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'rgba(148,163,184,.3)', pointerEvents: 'none' }} />
-              <input className="wm-input" placeholder="Search..."
-                style={{ paddingLeft: 30, height: 34, width: 200, fontSize: '.8rem' }} />
-            </div>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            {/* Theme toggle */}
-            <button
-              aria-label="Toggle theme"
-              onClick={() => setTheme(isDark ? 'light' : 'dark')}
-              style={{
-                width: 60, height: 32, borderRadius: 99,
-                background: isDark ? 'rgba(124,58,237,.2)' : 'rgba(99,102,241,.1)',
-                border: `1px solid ${isDark ? 'rgba(124,58,237,.35)' : 'rgba(99,102,241,.25)'}`,
-                cursor: 'pointer', position: 'relative',
-                transition: 'all .3s', flexShrink: 0, display: 'flex', alignItems: 'center',
-                padding: '0 4px',
-              }}>
-              {/* track icons */}
-              <Moon size={11} style={{ position:'absolute', left:8, color: isDark ? '#a78bfa' : 'rgba(148,163,184,.3)', transition:'all .3s' }} />
-              <Sun  size={11} style={{ position:'absolute', right:8, color: isDark ? 'rgba(148,163,184,.3)' : '#f59e0b', transition:'all .3s' }} />
-              {/* thumb */}
-              <div style={{
-                width: 22, height: 22, borderRadius: '50%',
-                background: isDark ? 'linear-gradient(135deg,#7c3aed,#3b82f6)' : 'linear-gradient(135deg,#f59e0b,#f97316)',
-                boxShadow: isDark ? '0 0 8px rgba(124,58,237,.5)' : '0 0 8px rgba(245,158,11,.4)',
-                position: 'absolute',
-                left: isDark ? 4 : 34,
-                transition: 'left .3s cubic-bezier(.34,1.56,.64,1)',
-              }} />
-            </button>
-            <button aria-label="Notifications" style={{
-              width: 32, height: 32, borderRadius: 8,
-              background: 'var(--bg-input)', border: '0.5px solid var(--border-subtle)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              cursor: 'pointer', position: 'relative', color: 'rgba(148,163,184,.55)', transition: 'all .2s',
-            }}
-              onMouseEnter={e => { const b = e.currentTarget as HTMLButtonElement; b.style.background = 'var(--bg-hover)'; b.style.color = 'var(--text-nav-active)'; }}
-              onMouseLeave={e => { const b = e.currentTarget as HTMLButtonElement; b.style.background = 'var(--bg-input)'; b.style.color = 'var(--text-secondary)'; }}>
-              <Bell size={14} />
-              <span style={{ position: 'absolute', top: 7, right: 7, width: 5, height: 5, borderRadius: '50%', background: '#f472b6', boxShadow: '0 0 5px #f472b6', animation: 'dotPulse 2s ease-in-out infinite' }} />
-            </button>
-            <div style={{
-              width: 32, height: 32, borderRadius: 8,
-              background: 'linear-gradient(135deg,#7c3aed,#3b82f6)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 11, fontWeight: 700, color: '#fff', cursor: 'pointer',
-              boxShadow: '0 0 10px rgba(124,58,237,.3)',
-            }}>{initials}</div>
-          </div>
-        </header>
-
-        <main style={{ position: 'relative', zIndex: 1 }}>{children}</main>
-      </div>
-
-      <style>{`@media(max-width:768px){.mobile-menu-btn{display:flex!important;}}`}</style>
-    </div>
-  );
+/* ── Reset ─────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  font-family: var(--font-sans, system-ui, sans-serif);
+  background: var(--bg-base);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  transition: background .3s, color .3s;
 }
+
+/* ══════════════════════════════════════════
+   DESIGN TOKENS
+   ══════════════════════════════════════════ */
+
+/* ── Dark mode (default) ── */
+:root, .dark {
+  --bg-base:          #06060f;
+  --bg-surface:       rgba(10,10,28,.8);
+  --bg-surface-solid: #0e0e20;
+  --bg-hover:         rgba(124,58,237,.1);
+  --bg-active:        rgba(124,58,237,.18);
+  --bg-input:         rgba(255,255,255,.04);
+  --bg-sidebar:       rgba(6,6,15,.95);
+  --bg-topbar:        rgba(6,6,15,.7);
+  --bg-stat:          rgba(10,10,28,.8);
+
+  --border-base:      rgba(124,58,237,.2);
+  --border-subtle:    rgba(124,58,237,.12);
+  --border-input:     rgba(124,58,237,.18);
+  --border-hover:     rgba(124,58,237,.4);
+  --border-active:    rgba(124,58,237,.25);
+
+  --text-primary:     #f1f5f9;
+  --text-secondary:   rgba(148,163,184,.65);
+  --text-muted:       rgba(148,163,184,.4);
+  --text-placeholder: rgba(148,163,184,.3);
+  --text-nav-active:  #a78bfa;
+  --text-nav-hover:   #c4b5fd;
+
+  --accent:           #7c3aed;
+  --accent-2:         #3b82f6;
+  --shadow-card:      rgba(124,58,237,.07);
+  --shadow-btn:       rgba(99,102,241,.45);
+
+  --grid-opacity:     .04;
+  --orb-1:            rgba(124,58,237,.16);
+  --orb-2:            rgba(59,130,246,.12);
+  --orb-3:            rgba(236,72,153,.1);
+
+  --scrollbar-thumb:  rgba(124,58,237,.35);
+  --scrollbar-hover:  rgba(124,58,237,.6);
+
+  --stat-line:        rgba(167,139,250,.4);
+  --table-border:     rgba(124,58,237,.12);
+  --table-row-hover:  rgba(124,58,237,.05);
+  --table-td-border:  rgba(255,255,255,.04);
+  --divider:          rgba(124,58,237,.25);
+}
+
+/* ── Light mode — crisp oxygen palette ── */
+.light {
+  --bg-base:          #eef2f7;
+  --bg-surface:       #ffffff;
+  --bg-surface-solid: #ffffff;
+  --bg-hover:         rgba(79,70,229,.06);
+  --bg-active:        rgba(79,70,229,.1);
+  --bg-input:         #ffffff;
+  --bg-sidebar:       #ffffff;
+  --bg-topbar:        rgba(255,255,255,.95);
+  --bg-stat:          #ffffff;
+
+  --border-base:      #e2e8f0;
+  --border-subtle:    #e8edf5;
+  --border-input:     #d1d9e6;
+  --border-hover:     #a5b4fc;
+  --border-active:    #818cf8;
+
+  --text-primary:     #0f172a;
+  --text-secondary:   #475569;
+  --text-muted:       #94a3b8;
+  --text-placeholder: #b8c5d6;
+  --text-nav-active:  #4338ca;
+  --text-nav-hover:   #4f46e5;
+
+  --accent:           #4f46e5;
+  --accent-2:         #2563eb;
+  --shadow-card:      rgba(15,23,42,.06);
+  --shadow-btn:       rgba(79,70,229,.3);
+
+  --grid-opacity:     .015;
+  --orb-1:            rgba(99,102,241,.06);
+  --orb-2:            rgba(59,130,246,.04);
+  --orb-3:            rgba(236,72,153,.04);
+
+  --scrollbar-thumb:  rgba(99,102,241,.25);
+  --scrollbar-hover:  rgba(99,102,241,.45);
+
+  --stat-line:        rgba(99,102,241,.25);
+  --table-border:     #e8edf5;
+  --table-row-hover:  rgba(79,70,229,.03);
+  --table-td-border:  #f1f5f9;
+  --divider:          #e2e8f0;
+}
+
+/* ══════════════════════════════════════════
+   SCROLLBAR
+   ══════════════════════════════════════════ */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-hover); }
+
+/* ══════════════════════════════════════════
+   ANIMATIONS
+   ══════════════════════════════════════════ */
+@keyframes float1   { 0%,100%{transform:translate(0,0) scale(1)} 50%{transform:translate(28px,-22px) scale(1.08)} }
+@keyframes float2   { 0%,100%{transform:translate(0,0) scale(1)} 50%{transform:translate(-22px,28px) scale(1.12)} }
+@keyframes float3   { 0%,100%{transform:translate(0,0)} 50%{transform:translate(16px,20px)} }
+@keyframes scan     { 0%{top:-100%} 100%{top:200%} }
+@keyframes bobPill  { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)} }
+@keyframes dotPulse { 0%,100%{transform:scale(1);opacity:.7} 50%{transform:scale(1.4);opacity:1} }
+@keyframes fadeUp   { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+@keyframes fadeIn   { from{opacity:0} to{opacity:1} }
+@keyframes shimBtn  { 0%{left:-100%} 100%{left:200%} }
+@keyframes bdPulse  { 0%,100%{opacity:.45} 50%{opacity:1} }
+@keyframes borderGlow{ 0%,100%{border-color:rgba(124,58,237,.28)} 50%{border-color:rgba(96,165,250,.5)} }
+@keyframes spin     { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+@keyframes slideIn  { from{transform:translateX(-100%);opacity:0} to{transform:translateX(0);opacity:1} }
+@keyframes pulse    { 0%,100%{opacity:.5} 50%{opacity:1} }
+@keyframes gradMove { 0%{background-position:0% 50%} 50%{background-position:100% 50%} 100%{background-position:0% 50%} }
+
+/* ══════════════════════════════════════════
+   COMPONENTS
+   ══════════════════════════════════════════ */
+
+/* ── Card ── */
+.wm-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-base);
+  border-radius: 16px;
+  backdrop-filter: blur(20px);
+  transition: border-color .3s, box-shadow .3s;
+}
+.wm-card:hover {
+  border-color: var(--border-hover);
+  box-shadow: 0 0 30px var(--shadow-card);
+}
+
+/* ── Stat card ── */
+.wm-stat {
+  background: var(--bg-stat);
+  border: 1px solid var(--border-input);
+  border-radius: 14px;
+  padding: 20px;
+  transition: all .25s;
+  position: relative;
+  overflow: hidden;
+}
+.wm-stat::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--stat-line), transparent);
+}
+.wm-stat:hover {
+  transform: translateY(-2px);
+  border-color: var(--border-hover);
+  box-shadow: 0 8px 30px var(--shadow-card);
+}
+
+/* ── Sidebar ── */
+.wm-sidebar {
+  width: 240px;
+  background: var(--bg-sidebar);
+  border-right: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  top: 0; bottom: 0; left: 0;
+  z-index: 50;
+  backdrop-filter: blur(20px);
+  box-shadow: 2px 0 20px rgba(0,0,0,.05);
+}
+
+/* ── Nav items ── */
+.wm-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: .85rem;
+  color: var(--text-secondary);
+  text-decoration: none;
+  transition: all .2s;
+  cursor: pointer;
+  border: none;
+  background: none;
+  width: 100%;
+  text-align: left;
+}
+.wm-nav-item:hover {
+  background: var(--bg-hover);
+  color: var(--text-nav-hover);
+}
+.wm-nav-item.active {
+  background: var(--bg-active);
+  color: var(--text-nav-active);
+  border: 0.5px solid var(--border-active);
+}
+
+/* ── Buttons ── */
+.wm-btn-primary {
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 10px 20px;
+  font-size: .875rem;
+  font-weight: 600;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: transform .15s, box-shadow .25s;
+  letter-spacing: .02em;
+}
+.wm-btn-primary::after {
+  content: '';
+  position: absolute;
+  top: 0; left: -100%;
+  width: 60%; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.2), transparent);
+  animation: shimBtn 2.5s ease-in-out infinite;
+}
+.wm-btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 28px var(--shadow-btn);
+}
+.wm-btn-ghost {
+  background: var(--bg-input);
+  color: var(--text-secondary);
+  border: 0.5px solid var(--border-subtle);
+  border-radius: 10px;
+  padding: 10px 20px;
+  font-size: .875rem;
+  cursor: pointer;
+  transition: all .2s;
+}
+.wm-btn-ghost:hover {
+  background: var(--bg-hover);
+  border-color: var(--border-hover);
+  color: var(--text-nav-hover);
+}
+
+/* ── Inputs ── */
+.wm-input {
+  width: 100%;
+  background: var(--bg-input);
+  border: 1px solid var(--border-input);
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: .875rem;
+  color: var(--text-primary);
+  outline: none;
+  transition: all .25s;
+}
+.wm-input::placeholder { color: var(--text-placeholder); }
+.wm-input:focus {
+  border-color: var(--accent);
+  background: var(--bg-hover);
+  box-shadow: 0 0 0 3px rgba(99,102,241,.12);
+}
+
+/* ── Table ── */
+.wm-table { width: 100%; border-collapse: collapse; }
+.wm-table th {
+  text-align: left;
+  font-size: .72rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--table-border);
+}
+.wm-table td {
+  padding: 13px 16px;
+  font-size: .85rem;
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--table-td-border);
+}
+.wm-table tr:hover td { background: var(--table-row-hover); }
+
+/* ── Badge ── */
+.wm-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 99px;
+  font-size: .7rem;
+  font-weight: 500;
+}
+.wm-badge-green  { background:rgba(52,211,153,.12);  color:#16a34a; border:0.5px solid rgba(52,211,153,.3); }
+.wm-badge-amber  { background:rgba(251,191,36,.12);   color:#d97706; border:0.5px solid rgba(251,191,36,.3); }
+.wm-badge-purple { background:rgba(99,102,241,.12);   color:#4f46e5; border:0.5px solid rgba(99,102,241,.3); }
+.wm-badge-red    { background:rgba(248,113,113,.12);  color:#dc2626; border:0.5px solid rgba(248,113,113,.3); }
+.wm-badge-blue   { background:rgba(59,130,246,.12);   color:#2563eb; border:0.5px solid rgba(59,130,246,.3); }
+
+/* light overrides for badges */
+.light .wm-badge-green  { background:rgba(22,163,74,.1);  }
+.light .wm-badge-amber  { background:rgba(217,119,6,.1);  }
+.light .wm-badge-purple { background:rgba(79,70,229,.1);  }
+.light .wm-badge-red    { background:rgba(220,38,38,.1);  }
+.light .wm-badge-blue   { background:rgba(37,99,235,.1);  }
+
+/* ── Grid bg ── */
+.wm-grid-bg {
+  position: fixed;
+  inset: 0;
+  opacity: var(--grid-opacity);
+  background-image:
+    linear-gradient(rgba(139,92,246,1) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(139,92,246,1) 1px, transparent 1px);
+  background-size: 44px 44px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ── Orbs ── */
+.wm-orb {
+  position: fixed;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ── Page layout ── */
+.wm-page { margin-left: 240px; min-height: 100vh; position: relative; z-index: 1; }
+.wm-page-inner { padding: 32px 36px; max-width: 1200px; }
+
+/* ── Topbar ── */
+.wm-topbar {
+  height: 60px;
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 36px;
+  background: var(--bg-topbar);
+  backdrop-filter: blur(16px);
+  position: sticky;
+  top: 0;
+  z-index: 40;
+}
+
+/* ── Animation utils ── */
+.wm-fade-up   { animation: fadeUp .5s ease both; }
+.wm-fade-up-2 { animation: fadeUp .5s .1s ease both; }
+.wm-fade-up-3 { animation: fadeUp .5s .2s ease both; }
+
+/* ── Mobile ── */
+@media (max-width: 768px) {
+  .wm-sidebar { transform: translateX(-100%); transition: transform .3s; }
+  .wm-sidebar.open { transform: translateX(0); }
+  .wm-page { margin-left: 0; }
+  .wm-page-inner { padding: 20px 16px; }
+  .wm-topbar { padding: 0 16px; }
+  .wm-left { display: none !important; }
+}
+
+/* ── Dialog overrides ── */
+[data-slot="dialog-overlay"] {
+  background: rgba(0,0,0,.6) !important;
+  backdrop-filter: blur(6px) !important;
+}
+[data-slot="dialog-content"] {
+  background: var(--bg-surface-solid) !important;
+  border: 1px solid var(--border-base) !important;
+  color: var(--text-primary) !important;
+  box-shadow: 0 0 60px var(--shadow-card) !important;
+}
+[data-slot="dialog-title"]       { color: var(--text-primary) !important; font-size: 1.05rem !important; font-weight: 600 !important; }
+[data-slot="dialog-description"] { color: var(--text-secondary) !important; }
+
+/* ── Pointer events fix ── */
+.wm-grid-bg, .wm-orb { pointer-events: none !important; }
+
+/* ── Divider ── */
+.wm-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--divider), transparent);
+  margin: 24px 0;
+}
+
+/* ══════════════════════════════════════════
+   LIGHT MODE — force overrides
+   Fixes hardcoded inline dark styles on pages
+   ══════════════════════════════════════════ */
+
+/* Base surfaces */
+.light body            { background: #eef2f7 !important; color: #0f172a !important; }
+.light .wm-grid-bg     { opacity: .012; }
+
+/* Cards & stats */
+.light .wm-card  {
+  background: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  box-shadow: 0 1px 3px rgba(15,23,42,.08), 0 4px 16px rgba(15,23,42,.04);
+}
+.light .wm-card:hover  {
+  border-color: #a5b4fc !important;
+  box-shadow: 0 4px 20px rgba(79,70,229,.1) !important;
+}
+.light .wm-stat  {
+  background: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  box-shadow: 0 1px 3px rgba(15,23,42,.08), 0 4px 16px rgba(15,23,42,.04);
+}
+.light .wm-stat:hover  {
+  border-color: #a5b4fc !important;
+  box-shadow: 0 8px 30px rgba(79,70,229,.1) !important;
+}
+
+/* Topbar & sidebar */
+.light .wm-topbar  {
+  background: rgba(255,255,255,.97) !important;
+  border-bottom-color: #e2e8f0 !important;
+  box-shadow: 0 1px 0 #e2e8f0;
+}
+.light .wm-sidebar {
+  background: #ffffff !important;
+  border-right-color: #e2e8f0 !important;
+  box-shadow: 1px 0 0 #e2e8f0;
+}
+
+/* Nav items */
+.light .wm-nav-item         { color: #475569 !important; }
+.light .wm-nav-item:hover   { background: rgba(79,70,229,.06) !important; color: #4f46e5 !important; }
+.light .wm-nav-item.active  { background: rgba(79,70,229,.1) !important; color: #4338ca !important; border-color: rgba(79,70,229,.2) !important; }
+
+/* Buttons */
+.light .wm-btn-ghost {
+  background: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+  color: #475569 !important;
+}
+.light .wm-btn-ghost:hover {
+  background: rgba(79,70,229,.06) !important;
+  border-color: #a5b4fc !important;
+  color: #4f46e5 !important;
+}
+
+/* Inputs */
+.light .wm-input {
+  background: #ffffff !important;
+  border-color: #d1d9e6 !important;
+  color: #0f172a !important;
+}
+.light .wm-input:focus {
+  border-color: #6366f1 !important;
+  box-shadow: 0 0 0 3px rgba(99,102,241,.1) !important;
+}
+
+/* Table */
+.light .wm-table th   { color: #64748b !important; border-bottom-color: #e8edf5 !important; }
+.light .wm-table td   { color: #0f172a !important; border-bottom-color: #f1f5f9 !important; }
+.light .wm-table tr:hover td { background: rgba(79,70,229,.03) !important; }
+
+/* Page inner text — force dark text on light bg for inline-styled elements */
+.light .wm-page-inner h1,
+.light .wm-page-inner h2,
+.light .wm-page-inner h3 { color: #0f172a !important; }
+
+.light .wm-page-inner p  { color: #475569 !important; }
+
+/* Force inline-styled dark text to be readable in light mode */
+.light .wm-page-inner [style*="color:#f1f5f9"],
+.light .wm-page-inner [style*="color: #f1f5f9"] { color: #0f172a !important; }
+
+.light .wm-page-inner [style*="color:rgba(148,163,184"],
+.light .wm-page-inner [style*="color: rgba(148,163,184"] { color: #64748b !important; }
+
+.light .wm-page-inner [style*="color:rgba(241,245,249"],
+.light .wm-page-inner [style*="color: rgba(241,245,249"] { color: #334155 !important; }
+
+/* Force inline dark backgrounds to white */
+.light .wm-page-inner [style*="background:#0e0e20"],
+.light .wm-page-inner [style*="background: #0e0e20"] { background: #ffffff !important; }
+
+.light .wm-page-inner [style*="background:rgba(10,10,28"],
+.light .wm-page-inner [style*="background: rgba(10,10,28"] { background: #ffffff !important; }
+
+.light .wm-page-inner [style*="background:rgba(255,255,255,.04)"],
+.light .wm-page-inner [style*="background: rgba(255,255,255,.04)"] { background: #f8fafc !important; }
+
+.light .wm-page-inner [style*="background:rgba(255,255,255,.03)"],
+.light .wm-page-inner [style*="background: rgba(255,255,255,.03)"] { background: #f8fafc !important; }
+
+/* Fix inline borders */
+.light .wm-page-inner [style*="border:1px solid rgba(124,58,237,."],
+.light .wm-page-inner [style*="border: 1px solid rgba(124,58,237,."] { border-color: #e2e8f0 !important; }
+
+.light .wm-page-inner [style*="borderBottom:1px solid rgba(255,255,255,.04)"],
+.light .wm-page-inner [style*="border-bottom: 1px solid rgba(255,255,255"] { border-bottom-color: #f1f5f9 !important; }
+
+/* Fix modal backgrounds */
+.light [style*="background:#0e0e20"]  { background: #ffffff !important; color: #0f172a !important; }
+.light [style*="background: #0e0e20"] { background: #ffffff !important; color: #0f172a !important; }
+
+/* Scrollbar */
+.light::-webkit-scrollbar-thumb { background: rgba(99,102,241,.25); }
+.light::-webkit-scrollbar-thumb:hover { background: rgba(99,102,241,.45); }

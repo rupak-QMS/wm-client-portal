@@ -25,10 +25,7 @@ export function StatsCard({ title, value, icon: Icon, color = 'purple', trend, d
   const { icon: iconColor, glow } = COLOR_MAP[color] ?? COLOR_MAP.purple;
 
   return (
-    <div
-      className="wm-stat"
-      style={{ transition: 'all .25s' }}
-    >
+    <div className="wm-stat" style={{ transition: 'all .25s' }}>
       {/* Top row */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
         <div style={{
@@ -55,13 +52,13 @@ export function StatsCard({ title, value, icon: Icon, color = 'purple', trend, d
         )}
       </div>
 
-      {/* Value */}
-      <div style={{ fontSize: '1.7rem', fontWeight: 700, color: '#f1f5f9', marginBottom: 4, lineHeight: 1 }}>
+      {/* Value — uses CSS variable so it works in both themes */}
+      <div style={{ fontSize: '1.7rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4, lineHeight: 1 }}>
         {value}
       </div>
 
       {/* Label */}
-      <div style={{ fontSize: '.78rem', color: 'rgba(148,163,184,.5)', letterSpacing: '.01em' }}>
+      <div style={{ fontSize: '.78rem', color: 'var(--text-muted)', letterSpacing: '.01em' }}>
         {title}
       </div>
 
