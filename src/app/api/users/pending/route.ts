@@ -1,7 +1,15 @@
-import { NextResponse }   from 'next/server';
-import { prisma }         from '@/lib/prisma';
-import { getCurrentUser } from '@/lib/auth';
-import { getAdminClient } from '@/lib/supabase-admin';
+import { NextResponse }                       from 'next/server';
+import prisma                                from '@/lib/prisma';
+import { getCurrentUser }                    from '@/lib/auth';
+import { createClient as createAdminClient } from '@supabase/supabase-js';
+
+function getAdminClient() {
+  return createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  );
+}
 
 // GET — manager fetches all pending agents
 export async function GET() {
