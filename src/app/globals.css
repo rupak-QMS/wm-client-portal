@@ -716,3 +716,22 @@ body {
 
 .light [style*="background:rgba(0,0,0,.75)"],
 .light [style*="background: rgba(0,0,0,.75)"] { background: rgba(45,38,64,.45) !important; backdrop-filter: blur(12px) !important; }
+
+/* ══ PEARL MIST — ALL TEXT DARK PURPLE ══ */
+.light, .light * {
+  color: #2d2640;
+}
+.light .wm-btn-primary,
+.light .wm-btn-primary * { color: #ffffff !important; }
+.light [style*="color:#34d399"],
+.light [style*="color: #34d399"] { color: #2a7a5e !important; }
+.light [style*="color:#fbbf24"],
+.light [style*="color: #fbbf24"] { color: #926c00 !important; }
+.light [style*="color:#f87171"],
+.light [style*="color: #f87171"] { color: #b91c1c !important; }
+.light [style*="color:#60a5fa"],
+.light [style*="color: #60a5fa"] { color: #1d4ed8 !important; }
+.light [style*="color:#a78bfa"],
+.light [style*="color: #a78bfa"] { color: #5b4b9e !important; }
+.light [style*="color:#f472b6"],
+.light [style*="color: #f472b6"] { color: #9d174d !important; }
