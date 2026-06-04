@@ -36,6 +36,7 @@ const NAV_ACCOUNT = [
 const NAV_SALES = [
   { href: '/sales/dashboard',   icon: LayoutDashboard, label: 'Dashboard'   },
   { href: '/sales/leads',       icon: Users,           label: 'My Sales'    },
+  { href: '/sales/notes',       icon: FileText,        label: 'Notepad'     },
   { href: '/sales/team',        icon: UserCheck,       label: 'My Team'     },
   { href: '/sales/targets',     icon: Target,          label: 'My Targets'  },
   { href: '/sales/performance', icon: TrendingUp,      label: 'Performance' },
