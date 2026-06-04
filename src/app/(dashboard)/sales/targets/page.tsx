@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Target, ChevronLeft, ChevronRight, TrendingUp, Users, CheckCircle } from 'lucide-react';
+import { Target, ChevronLeft, ChevronRight, TrendingUp, ShoppingBag } from 'lucide-react';
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const NOW    = new Date();
@@ -24,36 +24,35 @@ export default function SalesTargetsPage() {
   });
 
   const myTarget   = targets[0];
-  const achieved   = stats?.approved_leads ?? 0;
   const revenue    = stats?.revenue ?? 0;
-  const tClients   = myTarget?.target_clients ?? 0;
+  const totalSales = stats?.approved_leads ?? 0;
   const tRevenue   = parseFloat(myTarget?.target_revenue ?? 0);
-  const tDeals     = myTarget?.target_deals ?? 0;
-  const pctClients = tClients > 0 ? Math.min((achieved / tClients) * 100, 100) : 0;
-  const pctRevenue = tRevenue > 0 ? Math.min((revenue  / tRevenue) * 100, 100) : 0;
-  const pctDeals   = tDeals   > 0 ? Math.min((achieved / tDeals  ) * 100, 100) : 0;
-
-  const metrics = [
-    { label:'Clients Target',  icon:Users,       achieved, target:tClients, pct:pctClients, unit:'',  color:'#a78bfa', suffix:' clients' },
-    { label:'Revenue Target',  icon:TrendingUp,  achieved:revenue, target:tRevenue, pct:pctRevenue, unit:'$', color:'#34d399', suffix:'' },
-    { label:'Deals Target',    icon:CheckCircle, achieved, target:tDeals,   pct:pctDeals,   unit:'',  color:'#60a5fa', suffix:' deals'   },
-  ];
+  const pctRevenue = tRevenue > 0 ? Math.min((revenue / tRevenue) * 100, 100) : 0;
+  const pctColor   = pctRevenue >= 100 ? '#34d399' : pctRevenue >= 60 ? '#60a5fa' : pctRevenue >= 30 ? '#fbbf24' : '#f87171';
 
   return (
     <div className="wm-page-inner">
+
+      {/* Header */}
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:28, flexWrap:'wrap', gap:12 }} className="wm-fade-up">
         <div>
           <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:6 }}>
-            <Target size={15} style={{ color:'#a78bfa' }} />
+            <Target size={15} style={{ color:'#f472b6' }} />
             <span style={{ fontSize:'.72rem', color:'rgba(148,163,184,.5)', textTransform:'uppercase', letterSpacing:'.06em' }}>Goals</span>
           </div>
           <h1 style={{ fontSize:'1.65rem', fontWeight:700, color:'#f1f5f9', marginBottom:4 }}>My Targets</h1>
-          <p style={{ fontSize:'.875rem', color:'rgba(148,163,184,.5)' }}>Your monthly sales targets set by the manager</p>
+          <p style={{ fontSize:'.875rem', color:'rgba(148,163,184,.5)' }}>Your monthly revenue target set by the manager</p>
         </div>
         <div style={{ display:'flex', alignItems:'center', gap:6, background:'rgba(255,255,255,.04)', border:'1px solid rgba(124,58,237,.18)', borderRadius:10, padding:'6px 4px' }}>
-          <button onClick={prevMonth} style={{ width:28, height:28, borderRadius:7, border:'none', background:'none', cursor:'pointer', color:'rgba(148,163,184,.6)', display:'flex', alignItems:'center', justifyContent:'center' }}><ChevronLeft size={15}/></button>
+          <button onClick={prevMonth} style={{ width:28, height:28, borderRadius:7, border:'none', background:'none', cursor:'pointer', color:'rgba(148,163,184,.6)', display:'flex', alignItems:'center', justifyContent:'center' }}
+            onMouseEnter={e=>(e.currentTarget.style.background='rgba(124,58,237,.12)')} onMouseLeave={e=>(e.currentTarget.style.background='none')}>
+            <ChevronLeft size={15}/>
+          </button>
           <span style={{ fontSize:'.88rem', fontWeight:600, color:'#f1f5f9', minWidth:120, textAlign:'center' }}>{MONTHS[month-1]} {year}</span>
-          <button onClick={nextMonth} style={{ width:28, height:28, borderRadius:7, border:'none', background:'none', cursor:'pointer', color:'rgba(148,163,184,.6)', display:'flex', alignItems:'center', justifyContent:'center' }}><ChevronRight size={15}/></button>
+          <button onClick={nextMonth} style={{ width:28, height:28, borderRadius:7, border:'none', background:'none', cursor:'pointer', color:'rgba(148,163,184,.6)', display:'flex', alignItems:'center', justifyContent:'center' }}
+            onMouseEnter={e=>(e.currentTarget.style.background='rgba(124,58,237,.12)')} onMouseLeave={e=>(e.currentTarget.style.background='none')}>
+            <ChevronRight size={15}/>
+          </button>
         </div>
       </div>
 
@@ -61,54 +60,84 @@ export default function SalesTargetsPage() {
         <div className="wm-card" style={{ padding:'60px 24px', textAlign:'center' }}>
           <Target size={36} style={{ color:'rgba(148,163,184,.15)', margin:'0 auto 12px', display:'block' }} />
           <p style={{ color:'rgba(148,163,184,.4)', fontSize:'.9rem', marginBottom:4 }}>No target set for {MONTHS[month-1]} {year}</p>
-          <p style={{ color:'rgba(148,163,184,.25)', fontSize:'.8rem' }}>Your manager will set your monthly targets</p>
+          <p style={{ color:'rgba(148,163,184,.25)', fontSize:'.8rem' }}>Your manager will set your monthly target</p>
         </div>
-      ) : (
-        <>
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))', gap:16, marginBottom:24 }} className="wm-fade-up">
-            {metrics.map(({ label, icon:Icon, achieved:ach, target:tgt, pct, unit, color, suffix }) => (
-              <div key={label} className="wm-card" style={{ padding:'22px' }}>
-                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:14 }}>
-                  <div style={{ width:38, height:38, borderRadius:10, background:color+'18', display:'flex', alignItems:'center', justifyContent:'center', color }}>
-                    <Icon size={17}/>
-                  </div>
-                  <span style={{ fontSize:'.85rem', fontWeight:700, color: pct >= 100 ? '#34d399' : color }}>{pct.toFixed(0)}%</span>
-                </div>
-                <p style={{ fontSize:'.8rem', color:'rgba(148,163,184,.5)', marginBottom:8 }}>{label}</p>
-                <div style={{ height:6, borderRadius:99, background:'rgba(255,255,255,.06)', overflow:'hidden', marginBottom:8 }}>
-                  <div style={{ height:'100%', width:`${pct}%`, borderRadius:99, background:color, transition:'width .6s' }} />
-                </div>
-                <div style={{ display:'flex', justifyContent:'space-between', fontSize:'.72rem', color:'rgba(148,163,184,.4)' }}>
-                  <span>{unit}{ach.toLocaleString()}{suffix} achieved</span>
-                  <span>Target: {unit}{tgt.toLocaleString()}{suffix}</span>
-                </div>
-                {pct >= 100 && (
-                  <div style={{ marginTop:8, padding:'4px 10px', borderRadius:99, background:'rgba(52,211,153,.1)', border:'0.5px solid rgba(52,211,153,.25)', fontSize:'.72rem', color:'#34d399', textAlign:'center', fontWeight:600 }}>
-                    🎉 Target Achieved!
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
+      ) : (<>
 
-          <div className="wm-card wm-fade-up-2" style={{ padding:'22px 24px' }}>
-            <p style={{ fontSize:'.95rem', fontWeight:600, color:'#f1f5f9', marginBottom:16 }}>Target Details — {MONTHS[month-1]} {year}</p>
-            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))', gap:14 }}>
-              {[
-                { label:'Clients to Add',  value:`${myTarget.target_clients} clients`, color:'#a78bfa' },
-                { label:'Revenue Goal',    value:`${myTarget.currency} ${parseFloat(myTarget.target_revenue).toLocaleString()}`, color:'#34d399' },
-                { label:'Deals to Close',  value:`${myTarget.target_deals} deals`,     color:'#60a5fa' },
-                { label:'Conversion Rate', value:`${stats?.conversion_rate ?? 0}%`,    color:'#f472b6' },
-              ].map(({ label, value, color }) => (
-                <div key={label} style={{ padding:'14px 16px', borderRadius:11, background:'rgba(255,255,255,.03)', border:'0.5px solid rgba(255,255,255,.06)' }}>
-                  <p style={{ fontSize:'.72rem', color:'rgba(148,163,184,.45)', marginBottom:6 }}>{label}</p>
-                  <p style={{ fontSize:'1.1rem', fontWeight:700, color }}>{value}</p>
-                </div>
-              ))}
+        {/* Main revenue progress card */}
+        <div className="wm-card wm-fade-up" style={{ padding:'28px', marginBottom:16 }}>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:20 }}>
+            <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+              <div style={{ width:44, height:44, borderRadius:12, background:'rgba(244,114,182,.12)', display:'flex', alignItems:'center', justifyContent:'center', color:'#f472b6' }}>
+                <TrendingUp size={20}/>
+              </div>
+              <div>
+                <p style={{ fontSize:'.8rem', color:'rgba(148,163,184,.5)', marginBottom:2 }}>Revenue Target</p>
+                <p style={{ fontSize:'1.5rem', fontWeight:700, color:'#f1f5f9' }}>
+                  {myTarget.currency} {tRevenue.toLocaleString()}
+                </p>
+              </div>
+            </div>
+            <div style={{ textAlign:'right' }}>
+              <p style={{ fontSize:'2rem', fontWeight:800, color:pctColor, lineHeight:1 }}>{pctRevenue.toFixed(1)}%</p>
+              <p style={{ fontSize:'.72rem', color:'rgba(148,163,184,.4)', marginTop:4 }}>of target</p>
             </div>
           </div>
-        </>
-      )}
+
+          {/* Progress bar */}
+          <div style={{ height:10, borderRadius:99, background:'rgba(255,255,255,.06)', overflow:'hidden', marginBottom:12 }}>
+            <div style={{ height:'100%', width:`${pctRevenue}%`, borderRadius:99, background:`linear-gradient(90deg,${pctColor}88,${pctColor})`, transition:'width .8s ease' }} />
+          </div>
+
+          <div style={{ display:'flex', justifyContent:'space-between', fontSize:'.78rem' }}>
+            <span style={{ color:'rgba(148,163,184,.5)' }}>
+              Collected: <strong style={{ color:'#34d399' }}>{myTarget.currency} {revenue.toLocaleString()}</strong>
+            </span>
+            <span style={{ color:'rgba(148,163,184,.5)' }}>
+              Remaining: <strong style={{ color:'#fbbf24' }}>{myTarget.currency} {Math.max(tRevenue - revenue, 0).toLocaleString()}</strong>
+            </span>
+          </div>
+
+          {pctRevenue >= 100 && (
+            <div style={{ marginTop:16, padding:'10px', borderRadius:10, background:'rgba(52,211,153,.08)', border:'0.5px solid rgba(52,211,153,.25)', textAlign:'center', fontSize:'.85rem', color:'#34d399', fontWeight:600 }}>
+              🎉 Target Achieved! Great work this month!
+            </div>
+          )}
+        </div>
+
+        {/* Stats row */}
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14, marginBottom:16 }} className="wm-fade-up-2">
+          <div className="wm-stat">
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:12 }}>
+              <p style={{ fontSize:'.72rem', color:'rgba(148,163,184,.5)', textTransform:'uppercase', letterSpacing:'.05em' }}>Approved Sales</p>
+              <div style={{ width:32, height:32, borderRadius:8, background:'rgba(96,165,250,.12)', display:'flex', alignItems:'center', justifyContent:'center', color:'#60a5fa' }}>
+                <ShoppingBag size={14}/>
+              </div>
+            </div>
+            <p style={{ fontSize:'1.6rem', fontWeight:700, color:'#60a5fa', marginBottom:4 }}>{totalSales}</p>
+            <p style={{ fontSize:'.72rem', color:'rgba(148,163,184,.4)' }}>Sales approved this month</p>
+          </div>
+          <div className="wm-stat">
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:12 }}>
+              <p style={{ fontSize:'.72rem', color:'rgba(148,163,184,.5)', textTransform:'uppercase', letterSpacing:'.05em' }}>Conversion Rate</p>
+              <div style={{ width:32, height:32, borderRadius:8, background:'rgba(244,114,182,.12)', display:'flex', alignItems:'center', justifyContent:'center', color:'#f472b6' }}>
+                <Target size={14}/>
+              </div>
+            </div>
+            <p style={{ fontSize:'1.6rem', fontWeight:700, color:'#f472b6', marginBottom:4 }}>{stats?.conversion_rate ?? 0}%</p>
+            <p style={{ fontSize:'.72rem', color:'rgba(148,163,184,.4)' }}>Leads approved vs submitted</p>
+          </div>
+        </div>
+
+        {/* Info note */}
+        <div style={{ padding:'12px 16px', borderRadius:10, background:'rgba(96,165,250,.06)', border:'0.5px solid rgba(96,165,250,.15)', display:'flex', alignItems:'center', gap:10 }} className="wm-fade-up-3">
+          <Target size={14} style={{ color:'#60a5fa', flexShrink:0 }}/>
+          <p style={{ fontSize:'.78rem', color:'rgba(148,163,184,.55)' }}>
+            Revenue is calculated from the <strong style={{ color:'rgba(148,163,184,.75)' }}>collected upfront amount</strong> on your approved sales. Targets reset on the 1st of every month.
+          </p>
+        </div>
+
+      </>)}
     </div>
   );
 }
