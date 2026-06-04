@@ -58,49 +58,49 @@ body {
   --divider:          rgba(124,58,237,.25);
 }
 
-/* ── Light mode — oxygen palette ── */
+/* ── Light mode — crisp oxygen palette ── */
 .light {
-  --bg-base:          #f0f4f8;
-  --bg-surface:       rgba(255,255,255,.95);
+  --bg-base:          #eef2f7;
+  --bg-surface:       #ffffff;
   --bg-surface-solid: #ffffff;
-  --bg-hover:         rgba(99,102,241,.07);
-  --bg-active:        rgba(99,102,241,.12);
-  --bg-input:         rgba(255,255,255,.9);
+  --bg-hover:         rgba(79,70,229,.06);
+  --bg-active:        rgba(79,70,229,.1);
+  --bg-input:         #ffffff;
   --bg-sidebar:       #ffffff;
-  --bg-topbar:        rgba(255,255,255,.85);
+  --bg-topbar:        rgba(255,255,255,.95);
   --bg-stat:          #ffffff;
 
-  --border-base:      rgba(99,102,241,.18);
-  --border-subtle:    rgba(99,102,241,.12);
-  --border-input:     rgba(99,102,241,.25);
-  --border-hover:     rgba(99,102,241,.4);
-  --border-active:    rgba(99,102,241,.3);
+  --border-base:      #e2e8f0;
+  --border-subtle:    #e8edf5;
+  --border-input:     #d1d9e6;
+  --border-hover:     #a5b4fc;
+  --border-active:    #818cf8;
 
-  --text-primary:     #1e293b;
-  --text-secondary:   #64748b;
+  --text-primary:     #0f172a;
+  --text-secondary:   #475569;
   --text-muted:       #94a3b8;
-  --text-placeholder: #cbd5e1;
-  --text-nav-active:  #4f46e5;
-  --text-nav-hover:   #6366f1;
+  --text-placeholder: #b8c5d6;
+  --text-nav-active:  #4338ca;
+  --text-nav-hover:   #4f46e5;
 
   --accent:           #4f46e5;
   --accent-2:         #2563eb;
-  --shadow-card:      rgba(99,102,241,.08);
-  --shadow-btn:       rgba(99,102,241,.35);
+  --shadow-card:      rgba(15,23,42,.06);
+  --shadow-btn:       rgba(79,70,229,.3);
 
-  --grid-opacity:     .025;
-  --orb-1:            rgba(99,102,241,.08);
-  --orb-2:            rgba(59,130,246,.06);
-  --orb-3:            rgba(236,72,153,.05);
+  --grid-opacity:     .015;
+  --orb-1:            rgba(99,102,241,.06);
+  --orb-2:            rgba(59,130,246,.04);
+  --orb-3:            rgba(236,72,153,.04);
 
-  --scrollbar-thumb:  rgba(99,102,241,.3);
-  --scrollbar-hover:  rgba(99,102,241,.5);
+  --scrollbar-thumb:  rgba(99,102,241,.25);
+  --scrollbar-hover:  rgba(99,102,241,.45);
 
-  --stat-line:        rgba(99,102,241,.3);
-  --table-border:     rgba(99,102,241,.1);
-  --table-row-hover:  rgba(99,102,241,.04);
-  --table-td-border:  rgba(0,0,0,.05);
-  --divider:          rgba(99,102,241,.2);
+  --stat-line:        rgba(99,102,241,.25);
+  --table-border:     #e8edf5;
+  --table-row-hover:  rgba(79,70,229,.03);
+  --table-td-border:  #f1f5f9;
+  --divider:          #e2e8f0;
 }
 
 /* ══════════════════════════════════════════
@@ -395,9 +395,152 @@ body {
   margin: 24px 0;
 }
 
-/* ── Light mode surface overrides ── */
-.light .wm-card        { box-shadow: 0 1px 8px rgba(0,0,0,.06); }
-.light .wm-stat        { box-shadow: 0 1px 6px rgba(0,0,0,.05); }
-.light .wm-topbar      { box-shadow: 0 1px 12px rgba(0,0,0,.06); }
-.light .wm-sidebar     { box-shadow: 2px 0 20px rgba(0,0,0,.08); }
-.light body            { background: #f0f4f8; }
+/* ══════════════════════════════════════════
+   LIGHT MODE — force overrides
+   Fixes hardcoded inline dark styles on pages
+   ══════════════════════════════════════════ */
+
+/* Base surfaces */
+.light body            { background: #eef2f7 !important; color: #0f172a !important; }
+.light .wm-grid-bg     { opacity: .012; }
+
+/* Cards & stats */
+.light .wm-card  {
+  background: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  box-shadow: 0 1px 3px rgba(15,23,42,.08), 0 4px 16px rgba(15,23,42,.04);
+}
+.light .wm-card:hover  {
+  border-color: #a5b4fc !important;
+  box-shadow: 0 4px 20px rgba(79,70,229,.1) !important;
+}
+.light .wm-stat  {
+  background: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  box-shadow: 0 1px 3px rgba(15,23,42,.08), 0 4px 16px rgba(15,23,42,.04);
+}
+.light .wm-stat:hover  {
+  border-color: #a5b4fc !important;
+  box-shadow: 0 8px 30px rgba(79,70,229,.1) !important;
+}
+
+/* Topbar & sidebar */
+.light .wm-topbar  {
+  background: rgba(255,255,255,.97) !important;
+  border-bottom-color: #e2e8f0 !important;
+  box-shadow: 0 1px 0 #e2e8f0;
+}
+.light .wm-sidebar {
+  background: #ffffff !important;
+  border-right-color: #e2e8f0 !important;
+  box-shadow: 1px 0 0 #e2e8f0;
+}
+
+/* Nav items */
+.light .wm-nav-item         { color: #475569 !important; }
+.light .wm-nav-item:hover   { background: rgba(79,70,229,.06) !important; color: #4f46e5 !important; }
+.light .wm-nav-item.active  { background: rgba(79,70,229,.1) !important; color: #4338ca !important; border-color: rgba(79,70,229,.2) !important; }
+
+/* Buttons */
+.light .wm-btn-ghost {
+  background: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+  color: #475569 !important;
+}
+.light .wm-btn-ghost:hover {
+  background: rgba(79,70,229,.06) !important;
+  border-color: #a5b4fc !important;
+  color: #4f46e5 !important;
+}
+
+/* Inputs */
+.light .wm-input {
+  background: #ffffff !important;
+  border-color: #d1d9e6 !important;
+  color: #0f172a !important;
+}
+.light .wm-input:focus {
+  border-color: #6366f1 !important;
+  box-shadow: 0 0 0 3px rgba(99,102,241,.1) !important;
+}
+
+/* Table */
+.light .wm-table th   { color: #64748b !important; border-bottom-color: #e8edf5 !important; }
+.light .wm-table td   { color: #0f172a !important; border-bottom-color: #f1f5f9 !important; }
+.light .wm-table tr:hover td { background: rgba(79,70,229,.03) !important; }
+
+/* Page text */
+.light h1, .light h2, .light h3, .light h4 { color: #0f172a !important; }
+.light p { color: #475569; }
+
+/* ── Force inline dark text → dark in light mode ── */
+.light [style*="color:#f1f5f9"],
+.light [style*='color: #f1f5f9'] { color: #0f172a !important; }
+
+.light [style*="color:rgba(148,163,184,.5)"],
+.light [style*="color:rgba(148,163,184,.55)"],
+.light [style*="color:rgba(148,163,184,.4)"],
+.light [style*="color:rgba(148,163,184,.45)"],
+.light [style*="color:rgba(148,163,184,.6)"],
+.light [style*="color:rgba(148,163,184,.65)"],
+.light [style*="color:rgba(148,163,184,.7)"] { color: #64748b !important; }
+
+.light [style*="color:rgba(241,245,249"] { color: #1e293b !important; }
+.light [style*="color:rgba(100,116,139"] { color: #64748b !important; }
+
+/* ── Force inline dark backgrounds → white/light ── */
+.light [style*="background:#0e0e20"],
+.light [style*="background: #0e0e20"],
+.light [style*="background:#06060f"],
+.light [style*="background: #06060f"] {
+  background: #ffffff !important;
+  color: #0f172a !important;
+}
+
+.light [style*="background:rgba(10,10,28"],
+.light [style*="background: rgba(10,10,28"] { background: #ffffff !important; }
+
+.light [style*="background:rgba(6,6,15"],
+.light [style*="background: rgba(6,6,15"] { background: #ffffff !important; }
+
+.light [style*="background:rgba(255,255,255,.04)"],
+.light [style*="background: rgba(255,255,255,.04)"],
+.light [style*="background:rgba(255,255,255,.03)"],
+.light [style*="background: rgba(255,255,255,.03)"],
+.light [style*="background:rgba(255,255,255,.06)"],
+.light [style*="background: rgba(255,255,255,.06)"] { background: #f8fafc !important; }
+
+.light [style*="background:rgba(124,58,237,.08)"],
+.light [style*="background: rgba(124,58,237,.08)"],
+.light [style*="background:rgba(124,58,237,.1)"],
+.light [style*="background: rgba(124,58,237,.1)"],
+.light [style*="background:rgba(124,58,237,.12)"],
+.light [style*="background: rgba(124,58,237,.12)"] { background: rgba(79,70,229,.06) !important; }
+
+/* ── Fix inline borders ── */
+.light [style*="borderBottom:1px solid rgba(255,255,255,.04)"],
+.light [style*="border-bottom:1px solid rgba(255,255,255,.04)"] { border-bottom-color: #f1f5f9 !important; }
+
+.light [style*="borderTop:1px solid rgba(255,255,255,.05)"],
+.light [style*="border-top:1px solid rgba(255,255,255"] { border-top-color: #e2e8f0 !important; }
+
+.light [style*="border:1px solid rgba(124,58,237"],
+.light [style*="border: 1px solid rgba(124,58,237"] { border-color: #e2e8f0 !important; }
+
+.light [style*="borderBottom:1px solid rgba(124,58,237"],
+.light [style*="border-bottom:1px solid rgba(124,58,237"] { border-bottom-color: #e2e8f0 !important; }
+
+.light [style*="border:0.5px solid rgba(124,58,237"],
+.light [style*="border: 0.5px solid rgba(124,58,237"] { border-color: #e2e8f0 !important; }
+
+/* ── Dropdowns/selects with dark bg ── */
+.light select[style*="background:rgba(255,255,255,.04)"],
+.light select { background: #ffffff !important; color: #0f172a !important; border-color: #d1d9e6 !important; }
+
+/* ── Input overrides ── */
+.light input[style*="color:#f1f5f9"] { color: #0f172a !important; }
+.light textarea[style*="color:#f1f5f9"] { color: #0f172a !important; background: #ffffff !important; }
+
+/* Scrollbar */
+.light::-webkit-scrollbar-thumb { background: rgba(99,102,241,.25); }
+.light::-webkit-scrollbar-thumb:hover { background: rgba(99,102,241,.45); }
