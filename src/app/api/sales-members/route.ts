@@ -13,13 +13,14 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
   const { searchParams } = new URL(req.url);
-  const team = searchParams.get('team'); // aus_nz | uk | us_canada
+  const team    = searchParams.get('team'); // aus_nz | uk | us_canada
+  const role    = searchParams.get('role'); // team_leader | sales_team
 
-  const where: any = { role: 'sales_team' };
+  const where: any = { role: role ?? 'sales_team' };
   if (team) where.sales_team_group = team;
 
-  // Sales team members can only see their own team
-  if (user.role === 'sales_team') {
+  // Sales team members and team leaders can only see their own team
+  if (user.role === 'sales_team' || user.role === 'team_leader') {
     where.sales_team_group = user.sales_team_group ?? undefined;
   }
 
@@ -32,7 +33,11 @@ export async function GET(req: NextRequest) {
     orderBy: { full_name: 'asc' },
   });
 
-  // For each member, calculate their total collected (achieved) from approved leads
+  // For sales_team members calculate achieved amount; skip for team_leaders
+  if (role === 'team_leader') {
+    return NextResponse.json({ data: serialize(members) });
+  }
+
   const memberIds = members.map((m: any) => m.id);
   const leads = await prisma.salesLead.findMany({
     where: {

@@ -1,7 +1,7 @@
 'use client';
 import { useState }                              from 'react';
 import { useQuery, useQueryClient }              from '@tanstack/react-query';
-import { UserPlus, Mail, Trash2, Users, Pencil } from 'lucide-react';
+import { UserPlus, Mail, Trash2, Users, Pencil, Crown } from 'lucide-react';
 import { formatTime }                            from '@/lib/utils';
 import { createUserAction, deleteUserAction, updateUserAction } from '@/lib/auth';
 import { toast }                                 from 'sonner';
@@ -23,9 +23,12 @@ const inp: React.CSSProperties = { width:'100%', height:40, background:'rgba(255
 const sel: React.CSSProperties = { ...inp, cursor:'pointer' };
 const lbl: React.CSSProperties = { fontSize:'.75rem', color:'rgba(148,163,184,.55)', textTransform:'uppercase', letterSpacing:'.05em', display:'block', marginBottom:6 };
 
+type Tab = 'agents' | 'leaders';
+
 export default function SalesTeamPage() {
   const qc = useQueryClient();
-  const [filterTeam, setFilterTeam] = useState<string>('all');
+  const [tab,         setTab]         = useState<Tab>('agents');
+  const [filterTeam,  setFilterTeam]  = useState<string>('all');
   const [showModal,   setShowModal]   = useState(false);
   const [editMember,  setEditMember]  = useState<any>(null);
   const [confirmId,   setConfirmId]   = useState<string|null>(null);
@@ -34,27 +37,36 @@ export default function SalesTeamPage() {
   const [form,  setForm]  = useState({ full_name:'', email:'', password:'', sales_team_group:'' });
   const [eForm, setEForm] = useState({ full_name:'', sales_team_group:'', new_password:'' });
 
-  const { data: members = [], isLoading } = useQuery({
+  // Sales agents
+  const { data: members = [], isLoading: membersLoading } = useQuery({
     queryKey: ['sales-members'],
     queryFn:  async () => (await (await fetch('/api/sales-members')).json()).data ?? [],
   });
 
+  // Team leaders
+  const { data: leaders = [], isLoading: leadersLoading } = useQuery({
+    queryKey: ['team-leaders'],
+    queryFn:  async () => (await (await fetch('/api/sales-members?role=team_leader')).json()).data ?? [],
+  });
+
+  const isLoading = tab === 'agents' ? membersLoading : leadersLoading;
+  const list      = tab === 'agents' ? members : leaders;
+
   const filtered = filterTeam === 'all'
-    ? members
-    : members.filter((m: any) => m.sales_team_group === filterTeam);
+    ? list
+    : list.filter((m: any) => m.sales_team_group === filterTeam);
 
   const handleCreate = async () => {
     if (!form.full_name || !form.email || !form.password || !form.sales_team_group)
       return toast.error('All fields including team are required');
     setLoading(true);
-    const result = await createUserAction({ ...form, role: 'sales_team' } as any);
+    const role   = tab === 'leaders' ? 'team_leader' : 'sales_team';
+    const result = await createUserAction({ ...form, role } as any);
     setLoading(false);
     if (result?.error) { toast.error(result.error); return; }
-
-    // Set the team group via a direct update (since createUserAction may not support it)
-    // The sales_team_group will need to be set separately if createUserAction doesn't pass it
-    toast.success('Sales team member created!');
+    toast.success(tab === 'leaders' ? 'Team leader created!' : 'Sales team member created!');
     qc.invalidateQueries({ queryKey: ['sales-members'] });
+    qc.invalidateQueries({ queryKey: ['team-leaders'] });
     setShowModal(false);
     setForm({ full_name:'', email:'', password:'', sales_team_group:'' });
   };
@@ -70,8 +82,9 @@ export default function SalesTeamPage() {
     });
     setLoading(false);
     if (result?.error) { toast.error(result.error); return; }
-    toast.success('Member updated!');
+    toast.success('Updated!');
     qc.invalidateQueries({ queryKey: ['sales-members'] });
+    qc.invalidateQueries({ queryKey: ['team-leaders'] });
     setEditMember(null);
     setEForm({ full_name:'', sales_team_group:'', new_password:'' });
   };
@@ -80,10 +93,71 @@ export default function SalesTeamPage() {
     setIsDeleting(true);
     const result = await deleteUserAction(id);
     if (result?.error) toast.error(result.error);
-    else { toast.success('Member removed'); qc.invalidateQueries({ queryKey: ['sales-members'] }); }
+    else {
+      toast.success('Removed');
+      qc.invalidateQueries({ queryKey: ['sales-members'] });
+      qc.invalidateQueries({ queryKey: ['team-leaders'] });
+    }
     setIsDeleting(false);
     setConfirmId(null);
   };
+
+  const Modal = ({ title, subtitle, onClose, onSubmit, btnLabel }: any) => (
+    <div style={{ position:'fixed', inset:0, zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
+      <div onClick={onClose} style={{ position:'absolute', inset:0, background:'rgba(0,0,0,.75)', backdropFilter:'blur(6px)' }} />
+      <div style={{ position:'relative', zIndex:1, width:'100%', maxWidth:440, background:'#0e0e20', border:'1px solid rgba(124,58,237,.3)', borderRadius:18, padding:28 }}>
+        <h2 style={{ fontSize:'1.05rem', fontWeight:700, color:'#f1f5f9', marginBottom:4 }}>{title}</h2>
+        <p style={{ fontSize:'.82rem', color:'rgba(148,163,184,.5)', marginBottom:20 }}>{subtitle}</p>
+        {onSubmit === handleCreate ? (
+          <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+            <div>
+              <label style={lbl}>Full Name *</label>
+              <input style={inp} value={form.full_name} onChange={e => setForm(f=>({...f,full_name:e.target.value}))} placeholder="Jane Smith" />
+            </div>
+            <div>
+              <label style={lbl}>Email *</label>
+              <input style={inp} type="email" value={form.email} onChange={e => setForm(f=>({...f,email:e.target.value}))} placeholder="jane@webmaniacs.com" />
+            </div>
+            <div>
+              <label style={lbl}>Password *</label>
+              <input style={inp} type="password" value={form.password} onChange={e => setForm(f=>({...f,password:e.target.value}))} placeholder="Min. 8 characters" />
+            </div>
+            <div>
+              <label style={lbl}>Assign Team *</label>
+              <select style={sel} value={form.sales_team_group} onChange={e => setForm(f=>({...f,sales_team_group:e.target.value}))}>
+                <option value="">Select team...</option>
+                {TEAMS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+              </select>
+            </div>
+          </div>
+        ) : (
+          <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+            <div>
+              <label style={lbl}>Full Name</label>
+              <input style={inp} value={eForm.full_name} onChange={e => setEForm(f=>({...f,full_name:e.target.value}))} />
+            </div>
+            <div>
+              <label style={lbl}>Team</label>
+              <select style={sel} value={eForm.sales_team_group} onChange={e => setEForm(f=>({...f,sales_team_group:e.target.value}))}>
+                <option value="">Unassigned</option>
+                {TEAMS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={lbl}>New Password (leave blank to keep)</label>
+              <input style={inp} type="password" value={eForm.new_password} onChange={e => setEForm(f=>({...f,new_password:e.target.value}))} placeholder="Min. 8 characters" />
+            </div>
+          </div>
+        )}
+        <div style={{ display:'flex', gap:10, marginTop:20 }}>
+          <button className="wm-btn-ghost" onClick={onClose} style={{ flex:1, height:40 }}>Cancel</button>
+          <button className="wm-btn-primary" style={{ flex:1, height:40 }} disabled={loading} onClick={onSubmit}>
+            {loading ? 'Saving...' : btnLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 
   return (
     <div className="wm-page-inner">
@@ -96,22 +170,40 @@ export default function SalesTeamPage() {
             <span style={{ fontSize:'.72rem', color:'rgba(148,163,184,.5)', textTransform:'uppercase', letterSpacing:'.06em' }}>Team</span>
           </div>
           <h1 style={{ fontSize:'1.65rem', fontWeight:700, color:'#f1f5f9', marginBottom:4 }}>Sales Team</h1>
-          <p style={{ fontSize:'.875rem', color:'rgba(148,163,184,.5)' }}>Manage your sales team members across all regions</p>
+          <p style={{ fontSize:'.875rem', color:'rgba(148,163,184,.5)' }}>Manage sales agents and team leaders across all regions</p>
         </div>
         <button className="wm-btn-primary" onClick={() => setShowModal(true)}
           style={{ display:'flex', alignItems:'center', gap:7, height:38 }}>
-          <UserPlus size={15}/> Add Sales Member
+          <UserPlus size={15}/> {tab === 'leaders' ? 'Add Team Leader' : 'Add Sales Member'}
         </button>
       </div>
 
-      {/* Team filter tabs */}
+      {/* Tabs */}
+      <div style={{ display:'flex', gap:4, marginBottom:20, background:'rgba(255,255,255,.03)', border:'1px solid rgba(124,58,237,.12)', borderRadius:12, padding:4, width:'fit-content' }}>
+        {([['agents','Sales Agents'], ['leaders','Team Leaders']] as const).map(([val, label]) => (
+          <button key={val} onClick={() => { setTab(val); setFilterTeam('all'); }}
+            style={{ padding:'7px 18px', borderRadius:9, border:'none', cursor:'pointer', fontSize:'.82rem', fontWeight:600, transition:'all .2s',
+              background: tab===val ? 'rgba(124,58,237,.25)' : 'transparent',
+              color:      tab===val ? '#a78bfa' : 'rgba(148,163,184,.5)',
+              display:'flex', alignItems:'center', gap:6,
+            }}>
+            {val === 'leaders' && <Crown size={13}/>}
+            {label}
+            <span style={{ padding:'1px 7px', borderRadius:99, background:'rgba(255,255,255,.06)', fontSize:'.7rem', color:'rgba(148,163,184,.4)' }}>
+              {val === 'agents' ? members.length : leaders.length}
+            </span>
+          </button>
+        ))}
+      </div>
+
+      {/* Team filter */}
       <div style={{ display:'flex', gap:8, marginBottom:20, flexWrap:'wrap' }}>
         {[{ value:'all', label:'All Teams' }, ...TEAMS].map(t => (
           <button key={t.value} onClick={() => setFilterTeam(t.value)}
             style={{ padding:'7px 14px', borderRadius:10, border:`1px solid ${filterTeam===t.value?'rgba(167,139,250,.5)':'rgba(124,58,237,.18)'}`, background:filterTeam===t.value?'rgba(124,58,237,.12)':'rgba(255,255,255,.03)', color:filterTeam===t.value?'#a78bfa':'rgba(148,163,184,.6)', fontSize:'.82rem', fontWeight:600, cursor:'pointer', transition:'all .2s' }}>
             {t.label}
             <span style={{ marginLeft:6, padding:'1px 7px', borderRadius:99, background:'rgba(255,255,255,.06)', fontSize:'.7rem', color:'rgba(148,163,184,.4)' }}>
-              {t.value==='all' ? members.length : members.filter((m:any)=>m.sales_team_group===t.value).length}
+              {t.value==='all' ? list.length : list.filter((m:any)=>m.sales_team_group===t.value).length}
             </span>
           </button>
         ))}
@@ -135,7 +227,9 @@ export default function SalesTeamPage() {
               </thead>
               <tbody>
                 {filtered.length === 0 && (
-                  <tr><td colSpan={5} style={{ textAlign:'center', padding:'40px', color:'rgba(148,163,184,.3)' }}>No members in this team yet</td></tr>
+                  <tr><td colSpan={5} style={{ textAlign:'center', padding:'40px', color:'rgba(148,163,184,.3)' }}>
+                    No {tab === 'leaders' ? 'team leaders' : 'members'} yet
+                  </td></tr>
                 )}
                 {filtered.map((m: any) => {
                   const teamColor = TEAM_COLORS[m.sales_team_group] ?? { bg:'rgba(148,163,184,.1)', color:'rgba(148,163,184,.6)', border:'rgba(148,163,184,.2)' };
@@ -144,10 +238,19 @@ export default function SalesTeamPage() {
                     <tr key={m.id}>
                       <td>
                         <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                          <div style={{ width:34, height:34, borderRadius:9, flexShrink:0, background:'linear-gradient(135deg,rgba(244,114,182,.3),rgba(167,139,250,.3))', display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:700, color:'#f1f5f9' }}>
+                          <div style={{ width:34, height:34, borderRadius:9, flexShrink:0,
+                            background: tab==='leaders'
+                              ? 'linear-gradient(135deg,rgba(251,191,36,.3),rgba(167,139,250,.3))'
+                              : 'linear-gradient(135deg,rgba(244,114,182,.3),rgba(167,139,250,.3))',
+                            display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:700, color:'#f1f5f9' }}>
                             {m.full_name?.charAt(0)?.toUpperCase()}
                           </div>
-                          <span style={{ fontWeight:500, color:'#f1f5f9', fontSize:'.87rem' }}>{m.full_name}</span>
+                          <div>
+                            <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                              <span style={{ fontWeight:500, color:'#f1f5f9', fontSize:'.87rem' }}>{m.full_name}</span>
+                              {tab==='leaders' && <Crown size={11} style={{ color:'#fbbf24' }}/>}
+                            </div>
+                          </div>
                         </div>
                       </td>
                       <td>
@@ -186,82 +289,30 @@ export default function SalesTeamPage() {
         </div>
       )}
 
-      {/* Add Modal */}
       {showModal && (
-        <div style={{ position:'fixed', inset:0, zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
-          <div onClick={() => setShowModal(false)} style={{ position:'absolute', inset:0, background:'rgba(0,0,0,.75)', backdropFilter:'blur(6px)' }} />
-          <div style={{ position:'relative', zIndex:1, width:'100%', maxWidth:440, background:'#0e0e20', border:'1px solid rgba(124,58,237,.3)', borderRadius:18, padding:28 }}>
-            <h2 style={{ fontSize:'1.05rem', fontWeight:700, color:'#f1f5f9', marginBottom:4 }}>Add Sales Team Member</h2>
-            <p style={{ fontSize:'.82rem', color:'rgba(148,163,184,.5)', marginBottom:20 }}>Create a new sales team account</p>
-            <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
-              <div>
-                <label style={lbl}>Full Name *</label>
-                <input style={inp} value={form.full_name} onChange={e => setForm(f=>({...f,full_name:e.target.value}))} placeholder="Sarah Johnson" />
-              </div>
-              <div>
-                <label style={lbl}>Email *</label>
-                <input style={inp} type="email" value={form.email} onChange={e => setForm(f=>({...f,email:e.target.value}))} placeholder="sarah@webmaniacs.com" />
-              </div>
-              <div>
-                <label style={lbl}>Password *</label>
-                <input style={inp} type="password" value={form.password} onChange={e => setForm(f=>({...f,password:e.target.value}))} placeholder="Min. 8 characters" />
-              </div>
-              <div>
-                <label style={lbl}>Sales Team *</label>
-                <select style={sel} value={form.sales_team_group} onChange={e => setForm(f=>({...f,sales_team_group:e.target.value}))}>
-                  <option value="">Select team...</option>
-                  {TEAMS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-                </select>
-              </div>
-              <div style={{ display:'flex', gap:10, marginTop:4 }}>
-                <button className="wm-btn-ghost" onClick={() => setShowModal(false)} style={{ flex:1, height:40 }}>Cancel</button>
-                <button className="wm-btn-primary" style={{ flex:1, height:40 }} disabled={loading} onClick={handleCreate}>
-                  {loading ? 'Creating...' : 'Create Member'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+        <Modal
+          title={tab === 'leaders' ? 'Add Team Leader' : 'Add Sales Team Member'}
+          subtitle={tab === 'leaders' ? 'Team leader can add agents and view their team\'s performance' : 'Create a new sales team account'}
+          onClose={() => setShowModal(false)}
+          onSubmit={handleCreate}
+          btnLabel={tab === 'leaders' ? 'Create Team Leader' : 'Create Member'}
+        />
       )}
 
-      {/* Edit Modal */}
       {editMember && (
-        <div style={{ position:'fixed', inset:0, zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
-          <div onClick={() => setEditMember(null)} style={{ position:'absolute', inset:0, background:'rgba(0,0,0,.75)', backdropFilter:'blur(6px)' }} />
-          <div style={{ position:'relative', zIndex:1, width:'100%', maxWidth:440, background:'#0e0e20', border:'1px solid rgba(124,58,237,.3)', borderRadius:18, padding:28 }}>
-            <h2 style={{ fontSize:'1.05rem', fontWeight:700, color:'#f1f5f9', marginBottom:4 }}>Edit Member</h2>
-            <p style={{ fontSize:'.82rem', color:'rgba(148,163,184,.5)', marginBottom:20 }}>{editMember.email}</p>
-            <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
-              <div>
-                <label style={lbl}>Full Name</label>
-                <input style={inp} value={eForm.full_name} onChange={e => setEForm(f=>({...f,full_name:e.target.value}))} placeholder="Full name" />
-              </div>
-              <div>
-                <label style={lbl}>Sales Team</label>
-                <select style={sel} value={eForm.sales_team_group} onChange={e => setEForm(f=>({...f,sales_team_group:e.target.value}))}>
-                  <option value="">Unassigned</option>
-                  {TEAMS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-                </select>
-              </div>
-              <div>
-                <label style={lbl}>New Password (leave blank to keep current)</label>
-                <input style={inp} type="password" value={eForm.new_password} onChange={e => setEForm(f=>({...f,new_password:e.target.value}))} placeholder="Min. 8 characters" />
-              </div>
-              <div style={{ display:'flex', gap:10, marginTop:4 }}>
-                <button className="wm-btn-ghost" onClick={() => setEditMember(null)} style={{ flex:1, height:40 }}>Cancel</button>
-                <button className="wm-btn-primary" style={{ flex:1, height:40 }} disabled={loading} onClick={handleEdit}>
-                  {loading ? 'Saving...' : 'Save Changes'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+        <Modal
+          title="Edit Member"
+          subtitle={editMember.email}
+          onClose={() => setEditMember(null)}
+          onSubmit={handleEdit}
+          btnLabel="Save Changes"
+        />
       )}
 
       <ConfirmDialog
         open={!!confirmId}
-        title="Remove Sales Team Member"
-        description="This will permanently delete this sales team member and all their data."
+        title={tab === 'leaders' ? 'Remove Team Leader' : 'Remove Sales Team Member'}
+        description="This will permanently delete this user and all their data."
         onConfirm={() => confirmId && handleDelete(confirmId)}
         onCancel={() => setConfirmId(null)}
         loading={isDeleting}
