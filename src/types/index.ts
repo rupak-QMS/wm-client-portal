@@ -3,7 +3,7 @@
 // All shared TypeScript types for WM Client Portal
 // ============================================================
 
-export type UserRole = 'manager' | 'account_manager' | 'client';
+export type UserRole = 'manager' | 'account_manager' | 'sales_team' | 'team_leader' | 'client';
 export type ClientStatus = 'active' | 'inactive' | 'suspended';
 export type ReportType = 'seo' | 'website_update' | 'analytics' | 'audit' | 'other';
 export type RequestStatus = 'pending' | 'approved' | 'rejected';
