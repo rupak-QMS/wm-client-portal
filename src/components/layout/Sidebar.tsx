@@ -6,7 +6,7 @@ import { cn }         from '@/lib/utils';
 import {
   LayoutDashboard, Users, UserCheck, FileText,
   CheckCircle, Settings, MessageSquare, FolderOpen,
-  LogOut, Target, TrendingUp,
+  LogOut, Target, TrendingUp, Crown,
 } from 'lucide-react';
 import type { UserRole } from '@/types';
 import { logoutAction }  from '@/lib/auth';
@@ -32,6 +32,20 @@ const accountManagerNav: NavItem[] = [
   { label: 'Chat',      href: '/account/chat',      icon: MessageSquare },
 ];
 
+const salesTeamNav: NavItem[] = [
+  { label: 'Dashboard',   href: '/sales/dashboard',   icon: LayoutDashboard },
+  { label: 'My Sales',    href: '/sales/leads',       icon: Users },
+  { label: 'Notepad',     href: '/sales/notes',       icon: FileText },
+  { label: 'My Team',     href: '/sales/team',        icon: UserCheck },
+  { label: 'My Targets',  href: '/sales/targets',     icon: Target },
+  { label: 'Performance', href: '/sales/performance', icon: TrendingUp },
+];
+
+const teamLeaderNav: NavItem[] = [
+  { label: 'Dashboard', href: '/team-leader/dashboard', icon: LayoutDashboard },
+  { label: 'My Agents', href: '/team-leader/agents',    icon: Users },
+];
+
 const clientNav: NavItem[] = [
   { label: 'Dashboard', href: '/client/dashboard', icon: LayoutDashboard },
   { label: 'Reports',   href: '/client/reports',   icon: FileText },
@@ -42,18 +56,24 @@ const clientNav: NavItem[] = [
 const navMap: Record<UserRole, NavItem[]> = {
   manager:         managerNav,
   account_manager: accountManagerNav,
+  sales_team:      salesTeamNav,
+  team_leader:     teamLeaderNav,
   client:          clientNav,
 };
 
 const roleLabels: Record<UserRole, string> = {
   manager:         'Manager',
   account_manager: 'Account Manager',
+  sales_team:      'Sales Team',
+  team_leader:     'Team Leader',
   client:          'Client',
 };
 
 const roleBadgeColors: Record<UserRole, string> = {
   manager:         'bg-purple-500/20 text-purple-400 border border-purple-500/30',
   account_manager: 'bg-blue-500/20   text-blue-400   border border-blue-500/30',
+  sales_team:      'bg-pink-500/20   text-pink-400   border border-pink-500/30',
+  team_leader:     'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30',
   client:          'bg-green-500/20  text-green-400  border border-green-500/30',
 };
 
@@ -77,7 +97,8 @@ export function Sidebar({ role }: { role: UserRole }) {
 
       {/* Role */}
       <div className="px-4 pt-5 pb-2">
-        <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${roleBadgeColors[role]}`}>
+        <span className={`text-xs font-medium px-2.5 py-1 rounded-full inline-flex items-center gap-1.5 ${roleBadgeColors[role]}`}>
+          {role === 'team_leader' && <Crown className="h-3 w-3" />}
           {roleLabels[role]}
         </span>
       </div>
