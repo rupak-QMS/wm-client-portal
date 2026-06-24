@@ -33,7 +33,6 @@ export async function loginAction(email: string, password: string) {
 
   const profile = await prisma.user.findUnique({ where: { id: user.id } });
 
-  // Block pending agents — sign them out and return an error
   if ((profile as any)?.status === 'pending') {
     await supabase.auth.signOut();
     return { error: 'Your account is pending manager approval. Please wait before logging in.' };
@@ -88,7 +87,7 @@ export async function createUserAction(values: CreateUserFormValues & { sales_te
       full_name:        values.full_name,
       role:             values.role as UserRole,
       sales_team_group: (values.sales_team_group as any) ?? null,
-      status:           'active', // manager-created users are always active
+      status:           'active',
     },
     create: {
       id:               data.user.id,
@@ -127,8 +126,8 @@ export async function updateUserAction(values: {
   await prisma.user.update({
     where: { id: values.id },
     data: {
-      ...(values.full_name !== undefined        ? { full_name: values.full_name }                         : {}),
-      ...(values.sales_team_group !== undefined ? { sales_team_group: values.sales_team_group as any }   : {}),
+      ...(values.full_name !== undefined        ? { full_name: values.full_name }                       : {}),
+      ...(values.sales_team_group !== undefined ? { sales_team_group: values.sales_team_group as any } : {}),
     },
   });
 
@@ -140,9 +139,66 @@ export async function deleteUserAction(userId: string) {
   const me = await getCurrentUser();
   if (me?.role !== 'manager') return { error: 'Unauthorized' };
 
-  const adminClient = getAdminClient();
-  await adminClient.auth.admin.deleteUser(userId);
-  await prisma.user.delete({ where: { id: userId } });
+  try {
+    // 1. Block deletion if non-nullable FK relations exist
+    const [clientsCreated, leadsCreated, logsCreated, revenueCreated, salesTargetsCreated, upsells] =
+      await Promise.all([
+        prisma.client.count({ where: { created_by: userId } }),
+        prisma.salesLead.count({ where: { created_by: userId } }),
+        prisma.salesLog.count({ where: { created_by: userId } }),
+        prisma.revenueTarget.count({ where: { created_by: userId } }),
+        prisma.salesTarget.count({ where: { created_by: userId } }),
+        prisma.upsell.count({ where: { account_manager_id: userId } }),
+      ]);
+
+    const blockers = [
+      clientsCreated      && `${clientsCreated} client(s) created by this user`,
+      leadsCreated        && `${leadsCreated} sales lead(s) created by this user`,
+      logsCreated         && `${logsCreated} sales log(s) created by this user`,
+      revenueCreated      && `${revenueCreated} revenue target(s) created by this user`,
+      salesTargetsCreated && `${salesTargetsCreated} sales target(s) created by this user`,
+      upsells             && `${upsells} upsell(s) assigned to this user`,
+    ].filter(Boolean);
+
+    if (blockers.length > 0) {
+      return { error: `Cannot delete: reassign or remove the following first — ${blockers.join('; ')}.` };
+    }
+
+    // 2. Null out nullable FK relations
+    await prisma.$transaction([
+      prisma.client.updateMany({
+        where: { assigned_account_manager: userId },
+        data:  { assigned_account_manager: null },
+      }),
+      prisma.salesLead.updateMany({
+        where: { approved_by: userId },
+        data:  { approved_by: null },
+      }),
+      prisma.salesLead.updateMany({
+        where: { assigned_am: userId },
+        data:  { assigned_am: null },
+      }),
+      prisma.deleteRequest.updateMany({
+        where: { approved_by: userId },
+        data:  { approved_by: null },
+      }),
+      prisma.salesPerformanceNote.deleteMany({ where: { author_id: userId } }),
+    ]);
+
+    // 3. Delete user row — DB cascades handle the rest:
+    //    Comments, Messages, Notifications, ActivityLog, RevenueTarget(AM),
+    //    SalesTarget(member), SalesPerformanceBadge, SalesPerformanceNote(target)
+    await prisma.user.delete({ where: { id: userId } });
+
+    // 4. Delete from Supabase Auth
+    const adminClient = getAdminClient();
+    const { error: authError } = await adminClient.auth.admin.deleteUser(userId);
+    if (authError) throw new Error(authError.message);
+
+  } catch (err: any) {
+    console.error('deleteUserAction error:', err);
+    return { error: err?.message ?? 'Failed to delete user' };
+  }
 
   revalidatePath('/manager/account-managers');
   revalidatePath('/manager/sales-team');
