@@ -62,7 +62,7 @@ export async function forgotPasswordAction(email: string) {
   return { success: true };
 }
 
-export async function createUserAction(values: CreateUserFormValues & { sales_team_group?: string }) {
+export async function createUserAction(values: CreateUserFormValues & { team_id?: string }) {
   const me = await getCurrentUser();
   if (me?.role !== 'manager') return { error: 'Unauthorized' };
 
@@ -86,7 +86,7 @@ export async function createUserAction(values: CreateUserFormValues & { sales_te
     update: {
       full_name:        values.full_name,
       role:             values.role as UserRole,
-      sales_team_group: (values.sales_team_group as any) ?? null,
+      team_id: (values.team_id as any) ?? null,
       status:           'active',
     },
     create: {
@@ -94,7 +94,7 @@ export async function createUserAction(values: CreateUserFormValues & { sales_te
       email:            values.email,
       full_name:        values.full_name,
       role:             values.role as UserRole,
-      sales_team_group: (values.sales_team_group as any) ?? null,
+      team_id: (values.team_id as any) ?? null,
       status:           'active',
     },
   });
@@ -108,7 +108,7 @@ export async function createUserAction(values: CreateUserFormValues & { sales_te
 export async function updateUserAction(values: {
   id:                string;
   full_name?:        string;
-  sales_team_group?: string | null;
+  team_id?: string | null;
   new_password?:     string;
 }) {
   const me = await getCurrentUser();
@@ -127,7 +127,7 @@ export async function updateUserAction(values: {
     where: { id: values.id },
     data: {
       ...(values.full_name !== undefined        ? { full_name: values.full_name }                       : {}),
-      ...(values.sales_team_group !== undefined ? { sales_team_group: values.sales_team_group as any } : {}),
+      ...(values.team_id !== undefined ? { team_id: values.team_id as any } : {}),
     },
   });
 

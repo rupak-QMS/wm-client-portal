@@ -5,8 +5,9 @@ export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
     const team_leader_id = searchParams.get('team_leader_id');
-    const month = searchParams.get('month');
-    const year  = searchParams.get('year');
+    const team_id        = searchParams.get('team_id');
+    const month          = searchParams.get('month');
+    const year           = searchParams.get('year');
     if (!team_leader_id) return NextResponse.json({ error: 'team_leader_id required' }, { status: 400 });
 
     const allocations = await prisma.teamTargetAllocation.findMany({
@@ -19,10 +20,16 @@ export async function GET(req: Request) {
       orderBy: { created_at: 'asc' },
     });
 
-    // Also return TL target and remaining
-    const tlTarget = month && year ? await prisma.teamLeaderTarget.findUnique({
-      where: { team_leader_id_month_year: { team_leader_id, month: parseInt(month), year: parseInt(year) } },
-    }) : null;
+    // TL target for this team/month/year
+    const tlTarget = (month && year && team_id)
+      ? await prisma.teamLeaderTarget.findUnique({
+          where: { team_leader_id_team_id_month_year: {
+            team_leader_id, team_id,
+            month: parseInt(month),
+            year:  parseInt(year),
+          }},
+        })
+      : null;
 
     const allocated = allocations.reduce((s, a) => s + Number(a.allocated_target), 0);
     const remaining = tlTarget ? Number(tlTarget.target_amount) - allocated : null;
@@ -35,28 +42,28 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
-    const { team_leader_id, team_member_id, month, year, allocated_target, currency, created_by } = await req.json();
-    if (!team_leader_id || !team_member_id || !month || !year || allocated_target == null || !created_by)
+    const { team_leader_id, team_id, team_member_id, month, year, allocated_target, currency, created_by } = await req.json();
+    if (!team_leader_id || !team_id || !team_member_id || !month || !year || allocated_target == null || !created_by)
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
 
-    // Validation: check TL target exists and won't be exceeded
+    // Validate against TL target
     const tlTarget = await prisma.teamLeaderTarget.findUnique({
-      where: { team_leader_id_month_year: { team_leader_id, month: parseInt(month), year: parseInt(year) } },
+      where: { team_leader_id_team_id_month_year: {
+        team_leader_id, team_id,
+        month: parseInt(month),
+        year:  parseInt(year),
+      }},
     });
-    if (!tlTarget) return NextResponse.json({ error: 'No target assigned to this team leader for this month' }, { status: 400 });
+    if (!tlTarget) return NextResponse.json({ error: 'No target assigned to this team leader for this team/month' }, { status: 400 });
 
     const existing = await prisma.teamTargetAllocation.findMany({
-      where: { team_leader_id, month: parseInt(month), year: parseInt(year),
-        NOT: { team_member_id } }, // exclude current member in case of update
+      where: { team_leader_id, month: parseInt(month), year: parseInt(year), NOT: { team_member_id } },
     });
     const alreadyAllocated = existing.reduce((s, a) => s + Number(a.allocated_target), 0);
-    const remaining = Number(tlTarget.target_amount) - alreadyAllocated;
+    const remaining        = Number(tlTarget.target_amount) - alreadyAllocated;
 
-    if (Number(allocated_target) > remaining) {
-      return NextResponse.json({
-        error: `Allocated target exceeds available budget. Remaining: $${remaining.toFixed(2)}`,
-      }, { status: 400 });
-    }
+    if (Number(allocated_target) > remaining)
+      return NextResponse.json({ error: `Exceeds available budget. Remaining: $${remaining.toFixed(2)}` }, { status: 400 });
 
     const allocation = await prisma.teamTargetAllocation.upsert({
       where: { team_leader_id_team_member_id_month_year: { team_leader_id, team_member_id, month: parseInt(month), year: parseInt(year) } },

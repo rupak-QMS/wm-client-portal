@@ -19,13 +19,6 @@ enum UserRole {
   @@map("user_role")
 }
 
-enum SalesTeamGroup {
-  aus_nz
-  uk
-  us_canada
-  @@map("sales_team_group")
-}
-
 enum ClientStatus {
   active
   inactive
@@ -88,37 +81,42 @@ enum BadgeType {
   @@map("badge_type")
 }
 
-// ── Core models ────────────────────────────────────────
+// ── Teams ──────────────────────────────────────────────
 
-model Shift {
+model Team {
   id          String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
   name        String
-  start_time  String?
-  end_time    String?
   description String?
   is_active   Boolean  @default(true)
+  created_by  String?  @db.Uuid
   created_at  DateTime @default(now()) @db.Timestamptz
   updated_at  DateTime @updatedAt @db.Timestamptz
 
-  users User[]
+  creator           User?              @relation("TeamCreator", fields: [created_by], references: [id], onDelete: SetNull)
+  members           User[]             @relation("UserTeam")
+  teamLeaderTeams   TeamLeaderTeam[]
+  teamLeaderTargets TeamLeaderTarget[]
+  salesLeads        SalesLead[]
 
-  @@map("shifts")
+  @@map("teams")
 }
 
-model User {
-  id                String          @id @db.Uuid
-  full_name         String
-  email             String          @unique
-  role              UserRole        @default(client)
-  avatar_url        String?
-  sales_team_group  SalesTeamGroup?
-  shift_id          String?         @db.Uuid
-  status            String          @default("active")
-  created_by_leader String?         @db.Uuid
-  created_at        DateTime        @default(now()) @db.Timestamptz
-  updated_at        DateTime        @updatedAt @db.Timestamptz
+// ── Core models ────────────────────────────────────────
 
-  shift Shift? @relation(fields: [shift_id], references: [id], onDelete: SetNull)
+model User {
+  id                String   @id @db.Uuid
+  full_name         String
+  email             String   @unique
+  role              UserRole @default(client)
+  avatar_url        String?
+  team_id           String?  @db.Uuid
+  status            String   @default("active")
+  created_by_leader String?  @db.Uuid
+  created_at        DateTime @default(now()) @db.Timestamptz
+  updated_at        DateTime @updatedAt @db.Timestamptz
+
+  team         Team?  @relation("UserTeam",    fields: [team_id], references: [id], onDelete: SetNull)
+  teamsCreated Team[] @relation("TeamCreator")
 
   revenueTargets         RevenueTarget[]        @relation("TargetAM")
   revenueTargetsCreated  RevenueTarget[]        @relation("TargetCreator")
@@ -142,8 +140,6 @@ model User {
   salesBadges            SalesPerformanceBadge[]
   performanceNotes       SalesPerformanceNote[] @relation("NoteTarget")
   performanceNotesBy     SalesPerformanceNote[] @relation("NoteAuthor")
-
-  // Team leader relations
   tlMembers              TeamLeaderMember[]     @relation("TLMembers")
   memberOfTL             TeamLeaderMember[]     @relation("MemberOfTL")
   tlTargets              TeamLeaderTarget[]     @relation("TLTargets")
@@ -151,6 +147,7 @@ model User {
   tlAllocations          TeamTargetAllocation[] @relation("TLAllocations")
   memberAllocations      TeamTargetAllocation[] @relation("MemberAllocations")
   allocationCreated      TeamTargetAllocation[] @relation("AllocationCreator")
+  teamLeaderTeams        TeamLeaderTeam[]
 
   @@map("users")
 }
@@ -288,8 +285,8 @@ model RevenueTarget {
   created_at         DateTime @default(now()) @db.Timestamptz
   updated_at         DateTime @updatedAt @db.Timestamptz
 
-  accountManager User @relation("TargetAM",     fields: [account_manager_id], references: [id], onDelete: Cascade)
-  creator        User @relation("TargetCreator", fields: [created_by],         references: [id])
+  accountManager User @relation("TargetAM",      fields: [account_manager_id], references: [id], onDelete: Cascade)
+  creator        User @relation("TargetCreator",  fields: [created_by],         references: [id])
 
   @@unique([account_manager_id, month, year])
   @@map("revenue_targets")
@@ -310,7 +307,7 @@ model Upsell {
   created_at         DateTime      @default(now()) @db.Timestamptz
   updated_at         DateTime      @updatedAt @db.Timestamptz
 
-  client         Client @relation(fields: [client_id],          references: [id], onDelete: Cascade)
+  client         Client @relation(fields: [client_id],            references: [id], onDelete: Cascade)
   accountManager User   @relation("UpsellAM", fields: [account_manager_id], references: [id])
 
   @@map("upsells")
@@ -337,32 +334,33 @@ model SalesTarget {
 }
 
 model SalesLead {
-  id               String          @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  created_by       String          @db.Uuid
+  id               String     @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  created_by       String     @db.Uuid
   company_name     String
   contact_person   String
   email            String
   phone            String?
   website          String?
   service_required String?
-  project_cost     Decimal?        @db.Decimal(12, 2)
-  collected_amount Decimal?        @db.Decimal(12, 2)
-  currency         String          @default("USD")
-  sales_stage      String          @default("prospecting")
-  status           LeadStatus      @default(draft)
-  sales_team_group SalesTeamGroup?
+  project_cost     Decimal?   @db.Decimal(12, 2)
+  collected_amount Decimal?   @db.Decimal(12, 2)
+  currency         String     @default("USD")
+  sales_stage      String     @default("prospecting")
+  status           LeadStatus @default(draft)
+  team_id          String?    @db.Uuid
   notes            String?
   rejection_reason String?
   manager_notes    String?
-  approved_by      String?         @db.Uuid
-  assigned_am      String?         @db.Uuid
-  reviewed_at      DateTime?       @db.Timestamptz
-  created_at       DateTime        @default(now()) @db.Timestamptz
-  updated_at       DateTime        @updatedAt @db.Timestamptz
+  approved_by      String?    @db.Uuid
+  assigned_am      String?    @db.Uuid
+  reviewed_at      DateTime?  @db.Timestamptz
+  created_at       DateTime   @default(now()) @db.Timestamptz
+  updated_at       DateTime   @updatedAt @db.Timestamptz
 
   creator    User       @relation("LeadCreator",    fields: [created_by],  references: [id])
   approver   User?      @relation("LeadApprover",   fields: [approved_by], references: [id])
   assignedAM User?      @relation("LeadAssignedAM", fields: [assigned_am], references: [id])
+  team       Team?      @relation(fields: [team_id], references: [id], onDelete: SetNull)
   logs       SalesLog[]
 
   @@map("sales_leads")
@@ -419,6 +417,19 @@ model SalesPerformanceNote {
 
 // ── Team Leader Models ─────────────────────────────────
 
+model TeamLeaderTeam {
+  id             String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  team_id        String   @db.Uuid
+  team_leader_id String   @db.Uuid
+  created_at     DateTime @default(now()) @db.Timestamptz
+
+  team       Team @relation(fields: [team_id],        references: [id], onDelete: Cascade)
+  teamLeader User @relation(fields: [team_leader_id], references: [id], onDelete: Cascade)
+
+  @@unique([team_id, team_leader_id])
+  @@map("team_leader_teams")
+}
+
 model TeamLeaderMember {
   id              String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
   team_leader_id  String   @db.Uuid
@@ -437,6 +448,7 @@ model TeamLeaderMember {
 model TeamLeaderTarget {
   id             String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
   team_leader_id String   @db.Uuid
+  team_id        String   @db.Uuid
   month          Int
   year           Int
   target_amount  Decimal  @db.Decimal(12, 2)
@@ -446,9 +458,10 @@ model TeamLeaderTarget {
   updated_at     DateTime @updatedAt @db.Timestamptz
 
   teamLeader User @relation("TLTargets",       fields: [team_leader_id], references: [id], onDelete: Cascade)
-  creator    User @relation("TLTargetCreator",  fields: [created_by],     references: [id])
+  team       Team @relation(fields: [team_id],  references: [id], onDelete: Cascade)
+  creator    User @relation("TLTargetCreator",  fields: [created_by],    references: [id])
 
-  @@unique([team_leader_id, month, year])
+  @@unique([team_leader_id, team_id, month, year])
   @@map("team_leader_targets")
 }
 

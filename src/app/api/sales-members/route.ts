@@ -13,27 +13,27 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
   const { searchParams } = new URL(req.url);
-  const team    = searchParams.get('team'); // aus_nz | uk | us_canada
-  const role    = searchParams.get('role'); // team_leader | sales_team
+  const team = searchParams.get('team'); // team UUID
+  const role = searchParams.get('role'); // team_leader | sales_team
 
   const where: any = { role: role ?? 'sales_team' };
-  if (team) where.sales_team_group = team;
+  if (team) where.team_id = team;
 
-  // Sales team members and team leaders can only see their own team
+  // Sales team members and team leaders only see their own team
   if (user.role === 'sales_team' || user.role === 'team_leader') {
-    where.sales_team_group = user.sales_team_group ?? undefined;
+    where.team_id = (user as any).team_id ?? undefined;
   }
 
   const members = await prisma.user.findMany({
     where,
     select: {
       id: true, full_name: true, email: true,
-      sales_team_group: true, created_at: true,
+      team_id: true, team: { select: { id: true, name: true } },
+      created_at: true, status: true,
     },
     orderBy: { full_name: 'asc' },
   });
 
-  // For sales_team members calculate achieved amount; skip for team_leaders
   if (role === 'team_leader') {
     return NextResponse.json({ data: serialize(members) });
   }
@@ -44,7 +44,7 @@ export async function GET(req: NextRequest) {
       created_by: { in: memberIds },
       status: { in: ['approved', 'assigned'] },
     },
-    select: { created_by: true, collected_amount: true, currency: true },
+    select: { created_by: true, collected_amount: true },
   });
 
   const achievedMap: Record<string, number> = {};
@@ -52,10 +52,6 @@ export async function GET(req: NextRequest) {
     achievedMap[l.created_by] = (achievedMap[l.created_by] ?? 0) + parseFloat(l.collected_amount || 0);
   });
 
-  const data = members.map((m: any) => ({
-    ...m,
-    achieved: achievedMap[m.id] ?? 0,
-  }));
-
+  const data = members.map((m: any) => ({ ...m, achieved: achievedMap[m.id] ?? 0 }));
   return NextResponse.json({ data: serialize(data) });
 }

@@ -1,7 +1,7 @@
 'use client';
 import { useState }                              from 'react';
 import { useQuery, useQueryClient }              from '@tanstack/react-query';
-import { UserPlus, Mail, Trash2, Users, Pencil, Crown } from 'lucide-react';
+import { UserPlus, Mail, Trash2, Users, Pencil, Crown, Clock, Target } from 'lucide-react';
 import { formatTime }                            from '@/lib/utils';
 import { createUserAction, deleteUserAction, updateUserAction } from '@/lib/auth';
 import { toast }                                 from 'sonner';
@@ -12,49 +12,51 @@ const TEAMS = [
   { value: 'uk',        label: 'UK Sales Team'        },
   { value: 'us_canada', label: 'US/Canada Sales Team' },
 ];
-
 const TEAM_COLORS: Record<string, { bg: string; color: string; border: string }> = {
   aus_nz:    { bg: 'rgba(52,211,153,.12)',  color: '#34d399', border: 'rgba(52,211,153,.25)'  },
   uk:        { bg: 'rgba(96,165,250,.12)',  color: '#60a5fa', border: 'rgba(96,165,250,.25)'  },
   us_canada: { bg: 'rgba(244,114,182,.12)', color: '#f472b6', border: 'rgba(244,114,182,.25)' },
 };
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
-const inp: React.CSSProperties = { width:'100%', height:40, background:'rgba(255,255,255,.04)', border:'1px solid rgba(124,58,237,.18)', borderRadius:9, padding:'0 12px', fontSize:'.85rem', color:'#f1f5f9', outline:'none' };
+const inp: React.CSSProperties = { width:'100%', height:40, background:'rgba(255,255,255,.04)', border:'1px solid rgba(124,58,237,.18)', borderRadius:9, padding:'0 12px', fontSize:'.85rem', color:'#f1f5f9', outline:'none', boxSizing:'border-box' };
 const sel: React.CSSProperties = { ...inp, cursor:'pointer' };
 const lbl: React.CSSProperties = { fontSize:'.75rem', color:'rgba(148,163,184,.55)', textTransform:'uppercase', letterSpacing:'.05em', display:'block', marginBottom:6 };
 
 type Tab = 'agents' | 'leaders';
 
 export default function SalesTeamPage() {
-  const qc = useQueryClient();
-  const [tab,         setTab]         = useState<Tab>('agents');
-  const [filterTeam,  setFilterTeam]  = useState<string>('all');
-  const [showModal,   setShowModal]   = useState(false);
-  const [editMember,  setEditMember]  = useState<any>(null);
-  const [confirmId,   setConfirmId]   = useState<string|null>(null);
-  const [isDeleting,  setIsDeleting]  = useState(false);
-  const [loading,     setLoading]     = useState(false);
-  const [form,  setForm]  = useState({ full_name:'', email:'', password:'', sales_team_group:'' });
-  const [eForm, setEForm] = useState({ full_name:'', sales_team_group:'', new_password:'' });
+  const qc  = useQueryClient();
+  const now = new Date();
+  const [tab,          setTab]          = useState<Tab>('agents');
+  const [filterTeam,   setFilterTeam]   = useState<string>('all');
+  const [showModal,    setShowModal]    = useState(false);
+  const [editMember,   setEditMember]   = useState<any>(null);
+  const [confirmId,    setConfirmId]    = useState<string|null>(null);
+  const [isDeleting,   setIsDeleting]   = useState(false);
+  const [loading,      setLoading]      = useState(false);
+  const [form,  setForm]  = useState({ full_name:'', email:'', password:'', sales_team_group:'', shift_id:'' });
+  const [eForm, setEForm] = useState({ full_name:'', sales_team_group:'', new_password:'', shift_id:'' });
+  const [targetModal,  setTargetModal]  = useState<any>(null);
+  const [targetForm,   setTargetForm]   = useState({ month: now.getMonth()+1, year: now.getFullYear(), target_amount:'', currency:'USD' });
+  const [targetSaving, setTargetSaving] = useState(false);
 
-  // Sales agents
   const { data: members = [], isLoading: membersLoading } = useQuery({
     queryKey: ['sales-members'],
     queryFn:  async () => (await (await fetch('/api/sales-members')).json()).data ?? [],
   });
-
-  // Team leaders
   const { data: leaders = [], isLoading: leadersLoading } = useQuery({
     queryKey: ['team-leaders'],
     queryFn:  async () => (await (await fetch('/api/sales-members?role=team_leader')).json()).data ?? [],
   });
+  const { data: shifts = [] } = useQuery<any[]>({
+    queryKey: ['shifts'],
+    queryFn:  async () => (await (await fetch('/api/shifts')).json()).data ?? [],
+  });
 
   const isLoading = tab === 'agents' ? membersLoading : leadersLoading;
   const list      = tab === 'agents' ? members : leaders;
-
-  const filtered = filterTeam === 'all'
-    ? list
-    : list.filter((m: any) => m.sales_team_group === filterTeam);
+  const filtered  = filterTeam === 'all' ? list : list.filter((m:any) => m.sales_team_group === filterTeam);
 
   const handleCreate = async () => {
     if (!form.full_name || !form.email || !form.password || !form.sales_team_group)
@@ -68,7 +70,7 @@ export default function SalesTeamPage() {
     qc.invalidateQueries({ queryKey: ['sales-members'] });
     qc.invalidateQueries({ queryKey: ['team-leaders'] });
     setShowModal(false);
-    setForm({ full_name:'', email:'', password:'', sales_team_group:'' });
+    setForm({ full_name:'', email:'', password:'', sales_team_group:'', shift_id:'' });
   };
 
   const handleEdit = async () => {
@@ -76,17 +78,17 @@ export default function SalesTeamPage() {
     setLoading(true);
     const result = await updateUserAction({
       id:               editMember.id,
-      full_name:        eForm.full_name || undefined,
+      full_name:        eForm.full_name  || undefined,
       sales_team_group: eForm.sales_team_group || null,
       new_password:     eForm.new_password || undefined,
-    });
+      shift_id:         tab === 'leaders' ? (eForm.shift_id || null) : undefined,
+    } as any);
     setLoading(false);
     if (result?.error) { toast.error(result.error); return; }
     toast.success('Updated!');
     qc.invalidateQueries({ queryKey: ['sales-members'] });
     qc.invalidateQueries({ queryKey: ['team-leaders'] });
     setEditMember(null);
-    setEForm({ full_name:'', sales_team_group:'', new_password:'' });
   };
 
   const handleDelete = async (id: string) => {
@@ -102,66 +104,47 @@ export default function SalesTeamPage() {
     setConfirmId(null);
   };
 
-  const Modal = ({ title, subtitle, onClose, onSubmit, btnLabel }: any) => (
-    <div style={{ position:'fixed', inset:0, zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
-      <div onClick={onClose} style={{ position:'absolute', inset:0, background:'rgba(0,0,0,.75)', backdropFilter:'blur(6px)' }} />
-      <div style={{ position:'relative', zIndex:1, width:'100%', maxWidth:440, background:'#0e0e20', border:'1px solid rgba(124,58,237,.3)', borderRadius:18, padding:28 }}>
-        <h2 style={{ fontSize:'1.05rem', fontWeight:700, color:'#f1f5f9', marginBottom:4 }}>{title}</h2>
-        <p style={{ fontSize:'.82rem', color:'rgba(148,163,184,.5)', marginBottom:20 }}>{subtitle}</p>
-        {onSubmit === handleCreate ? (
-          <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
-            <div>
-              <label style={lbl}>Full Name *</label>
-              <input style={inp} value={form.full_name} onChange={e => setForm(f=>({...f,full_name:e.target.value}))} placeholder="Jane Smith" />
-            </div>
-            <div>
-              <label style={lbl}>Email *</label>
-              <input style={inp} type="email" value={form.email} onChange={e => setForm(f=>({...f,email:e.target.value}))} placeholder="jane@webmaniacs.com" />
-            </div>
-            <div>
-              <label style={lbl}>Password *</label>
-              <input style={inp} type="password" value={form.password} onChange={e => setForm(f=>({...f,password:e.target.value}))} placeholder="Min. 8 characters" />
-            </div>
-            <div>
-              <label style={lbl}>Assign Team *</label>
-              <select style={sel} value={form.sales_team_group} onChange={e => setForm(f=>({...f,sales_team_group:e.target.value}))}>
-                <option value="">Select team...</option>
-                {TEAMS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-              </select>
-            </div>
-          </div>
-        ) : (
-          <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
-            <div>
-              <label style={lbl}>Full Name</label>
-              <input style={inp} value={eForm.full_name} onChange={e => setEForm(f=>({...f,full_name:e.target.value}))} />
-            </div>
-            <div>
-              <label style={lbl}>Team</label>
-              <select style={sel} value={eForm.sales_team_group} onChange={e => setEForm(f=>({...f,sales_team_group:e.target.value}))}>
-                <option value="">Unassigned</option>
-                {TEAMS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-              </select>
-            </div>
-            <div>
-              <label style={lbl}>New Password (leave blank to keep)</label>
-              <input style={inp} type="password" value={eForm.new_password} onChange={e => setEForm(f=>({...f,new_password:e.target.value}))} placeholder="Min. 8 characters" />
-            </div>
-          </div>
-        )}
-        <div style={{ display:'flex', gap:10, marginTop:20 }}>
-          <button className="wm-btn-ghost" onClick={onClose} style={{ flex:1, height:40 }}>Cancel</button>
-          <button className="wm-btn-primary" style={{ flex:1, height:40 }} disabled={loading} onClick={onSubmit}>
-            {loading ? 'Saving...' : btnLabel}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
+  const openTarget = async (tl: any) => {
+    setTargetModal(tl);
+    const res  = await fetch(`/api/manager/team-leader-targets?month=${now.getMonth()+1}&year=${now.getFullYear()}`);
+    const json = await res.json();
+    const existing = (json.data ?? []).find((t:any) => t.team_leader_id === tl.id);
+    setTargetForm({
+      month:         now.getMonth() + 1,
+      year:          now.getFullYear(),
+      target_amount: existing ? String(existing.target_amount) : '',
+      currency:      existing?.currency ?? 'USD',
+    });
+  };
+
+  const saveTarget = async () => {
+    if (!targetForm.target_amount) return toast.error('Enter a target amount');
+    setTargetSaving(true);
+    const meRes = await fetch('/api/users/me');
+    const me    = await meRes.json().catch(() => null);
+    const res   = await fetch('/api/manager/team-leader-targets', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({
+        team_leader_id: targetModal.id,
+        month:          targetForm.month,
+        year:           targetForm.year,
+        target_amount:  parseFloat(targetForm.target_amount),
+        currency:       targetForm.currency,
+        created_by:     me?.data?.id,
+      }),
+    });
+    const json = await res.json();
+    setTargetSaving(false);
+    if (json.error) return toast.error(json.error);
+    toast.success('Target assigned!');
+    setTargetModal(null);
+  };
+
+  const isCreate = !editMember;
 
   return (
     <div className="wm-page-inner">
-
       {/* Header */}
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:28 }} className="wm-fade-up">
         <div>
@@ -172,21 +155,19 @@ export default function SalesTeamPage() {
           <h1 style={{ fontSize:'1.65rem', fontWeight:700, color:'#f1f5f9', marginBottom:4 }}>Sales Team</h1>
           <p style={{ fontSize:'.875rem', color:'rgba(148,163,184,.5)' }}>Manage sales agents and team leaders across all regions</p>
         </div>
-        <button className="wm-btn-primary" onClick={() => setShowModal(true)}
-          style={{ display:'flex', alignItems:'center', gap:7, height:38 }}>
+        <button className="wm-btn-primary" onClick={() => setShowModal(true)} style={{ display:'flex', alignItems:'center', gap:7, height:38 }}>
           <UserPlus size={15}/> {tab === 'leaders' ? 'Add Team Leader' : 'Add Sales Member'}
         </button>
       </div>
 
       {/* Tabs */}
       <div style={{ display:'flex', gap:4, marginBottom:20, background:'rgba(255,255,255,.03)', border:'1px solid rgba(124,58,237,.12)', borderRadius:12, padding:4, width:'fit-content' }}>
-        {([['agents','Sales Agents'], ['leaders','Team Leaders']] as const).map(([val, label]) => (
+        {([['agents','Sales Agents'],['leaders','Team Leaders']] as const).map(([val,label]) => (
           <button key={val} onClick={() => { setTab(val); setFilterTeam('all'); }}
             style={{ padding:'7px 18px', borderRadius:9, border:'none', cursor:'pointer', fontSize:'.82rem', fontWeight:600, transition:'all .2s',
               background: tab===val ? 'rgba(124,58,237,.25)' : 'transparent',
               color:      tab===val ? '#a78bfa' : 'rgba(148,163,184,.5)',
-              display:'flex', alignItems:'center', gap:6,
-            }}>
+              display:'flex', alignItems:'center', gap:6 }}>
             {val === 'leaders' && <Crown size={13}/>}
             {label}
             <span style={{ padding:'1px 7px', borderRadius:99, background:'rgba(255,255,255,.06)', fontSize:'.7rem', color:'rgba(148,163,184,.4)' }}>
@@ -200,7 +181,9 @@ export default function SalesTeamPage() {
       <div style={{ display:'flex', gap:8, marginBottom:20, flexWrap:'wrap' }}>
         {[{ value:'all', label:'All Teams' }, ...TEAMS].map(t => (
           <button key={t.value} onClick={() => setFilterTeam(t.value)}
-            style={{ padding:'7px 14px', borderRadius:10, border:`1px solid ${filterTeam===t.value?'rgba(167,139,250,.5)':'rgba(124,58,237,.18)'}`, background:filterTeam===t.value?'rgba(124,58,237,.12)':'rgba(255,255,255,.03)', color:filterTeam===t.value?'#a78bfa':'rgba(148,163,184,.6)', fontSize:'.82rem', fontWeight:600, cursor:'pointer', transition:'all .2s' }}>
+            style={{ padding:'7px 14px', borderRadius:10, border:`1px solid ${filterTeam===t.value?'rgba(167,139,250,.5)':'rgba(124,58,237,.18)'}`,
+              background:filterTeam===t.value?'rgba(124,58,237,.12)':'rgba(255,255,255,.03)',
+              color:filterTeam===t.value?'#a78bfa':'rgba(148,163,184,.6)', fontSize:'.82rem', fontWeight:600, cursor:'pointer' }}>
             {t.label}
             <span style={{ marginLeft:6, padding:'1px 7px', borderRadius:99, background:'rgba(255,255,255,.06)', fontSize:'.7rem', color:'rgba(148,163,184,.4)' }}>
               {t.value==='all' ? list.length : list.filter((m:any)=>m.sales_team_group===t.value).length}
@@ -218,64 +201,62 @@ export default function SalesTeamPage() {
             <table className="wm-table">
               <thead>
                 <tr>
-                  <th>Name</th>
-                  <th>Email</th>
-                  <th>Team</th>
-                  <th>Joined</th>
-                  <th style={{ textAlign:'right' }}>Actions</th>
+                  <th>Name</th><th>Email</th><th>Team</th>
+                  {tab === 'leaders' && <th>Shift</th>}
+                  <th>Joined</th><th style={{ textAlign:'right' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.length === 0 && (
-                  <tr><td colSpan={5} style={{ textAlign:'center', padding:'40px', color:'rgba(148,163,184,.3)' }}>
-                    No {tab === 'leaders' ? 'team leaders' : 'members'} yet
+                  <tr><td colSpan={tab==='leaders'?6:5} style={{ textAlign:'center', padding:'40px', color:'rgba(148,163,184,.3)' }}>
+                    No {tab==='leaders' ? 'team leaders' : 'members'} yet
                   </td></tr>
                 )}
-                {filtered.map((m: any) => {
-                  const teamColor = TEAM_COLORS[m.sales_team_group] ?? { bg:'rgba(148,163,184,.1)', color:'rgba(148,163,184,.6)', border:'rgba(148,163,184,.2)' };
-                  const teamLabel = TEAMS.find(t=>t.value===m.sales_team_group)?.label ?? 'Unassigned';
+                {filtered.map((m:any) => {
+                  const tc = TEAM_COLORS[m.sales_team_group] ?? { bg:'rgba(148,163,184,.1)', color:'rgba(148,163,184,.6)', border:'rgba(148,163,184,.2)' };
                   return (
                     <tr key={m.id}>
                       <td>
                         <div style={{ display:'flex', alignItems:'center', gap:10 }}>
                           <div style={{ width:34, height:34, borderRadius:9, flexShrink:0,
-                            background: tab==='leaders'
-                              ? 'linear-gradient(135deg,rgba(251,191,36,.3),rgba(167,139,250,.3))'
-                              : 'linear-gradient(135deg,rgba(244,114,182,.3),rgba(167,139,250,.3))',
+                            background: tab==='leaders' ? 'linear-gradient(135deg,rgba(251,191,36,.3),rgba(167,139,250,.3))' : 'linear-gradient(135deg,rgba(244,114,182,.3),rgba(167,139,250,.3))',
                             display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:700, color:'#f1f5f9' }}>
                             {m.full_name?.charAt(0)?.toUpperCase()}
                           </div>
-                          <div>
-                            <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-                              <span style={{ fontWeight:500, color:'#f1f5f9', fontSize:'.87rem' }}>{m.full_name}</span>
-                              {tab==='leaders' && <Crown size={11} style={{ color:'#fbbf24' }}/>}
-                            </div>
+                          <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                            <span style={{ fontWeight:500, color:'#f1f5f9', fontSize:'.87rem' }}>{m.full_name}</span>
+                            {tab==='leaders' && <Crown size={11} style={{ color:'#fbbf24' }}/>}
                           </div>
                         </div>
                       </td>
+                      <td><div style={{ display:'flex', alignItems:'center', gap:6, fontSize:'.82rem', color:'rgba(148,163,184,.6)' }}><Mail size={12}/>{m.email}</div></td>
                       <td>
-                        <div style={{ display:'flex', alignItems:'center', gap:6, fontSize:'.82rem', color:'rgba(148,163,184,.6)' }}>
-                          <Mail size={12}/> {m.email}
-                        </div>
-                      </td>
-                      <td>
-                        <span style={{ padding:'3px 10px', borderRadius:99, fontSize:'.7rem', fontWeight:500, background:teamColor.bg, color:teamColor.color, border:`0.5px solid ${teamColor.border}` }}>
-                          {teamLabel}
+                        <span style={{ padding:'3px 10px', borderRadius:99, fontSize:'.7rem', fontWeight:500, background:tc.bg, color:tc.color, border:`0.5px solid ${tc.border}` }}>
+                          {TEAMS.find(t=>t.value===m.sales_team_group)?.label ?? 'Unassigned'}
                         </span>
                       </td>
+                      {tab === 'leaders' && (
+                        <td>
+                          {m.shift?.name
+                            ? <div style={{ display:'flex', alignItems:'center', gap:5, fontSize:'.8rem', color:'rgba(148,163,184,.6)' }}><Clock size={12} style={{ color:'#34d399' }}/>{m.shift.name}</div>
+                            : <span style={{ fontSize:'.8rem', color:'rgba(148,163,184,.3)' }}>—</span>}
+                        </td>
+                      )}
                       <td style={{ fontSize:'.8rem', color:'rgba(148,163,184,.45)' }}>{formatTime(m.created_at)}</td>
                       <td style={{ textAlign:'right' }}>
                         <div style={{ display:'flex', gap:6, justifyContent:'flex-end' }}>
-                          <button onClick={() => { setEditMember(m); setEForm({ full_name:m.full_name, sales_team_group:m.sales_team_group??'', new_password:'' }); }}
-                            style={{ width:30, height:30, borderRadius:7, border:'none', background:'rgba(255,255,255,.04)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'rgba(148,163,184,.4)', transition:'all .2s' }}
-                            onMouseEnter={e => { const b=e.currentTarget as HTMLButtonElement; b.style.background='rgba(167,139,250,.12)'; b.style.color='#a78bfa'; }}
-                            onMouseLeave={e => { const b=e.currentTarget as HTMLButtonElement; b.style.background='rgba(255,255,255,.04)'; b.style.color='rgba(148,163,184,.4)'; }}>
+                          {tab === 'leaders' && (
+                            <button onClick={() => openTarget(m)}
+                              style={{ height:30, padding:'0 10px', borderRadius:7, border:'none', background:'rgba(52,211,153,.08)', cursor:'pointer', display:'flex', alignItems:'center', gap:5, color:'#34d399', fontSize:'.75rem', fontWeight:600 }}>
+                              <Target size={12}/> Target
+                            </button>
+                          )}
+                          <button onClick={() => { setEditMember(m); setEForm({ full_name:m.full_name, sales_team_group:m.sales_team_group??'', new_password:'', shift_id:m.shift_id??'' }); }}
+                            style={{ width:30, height:30, borderRadius:7, border:'none', background:'rgba(255,255,255,.04)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'rgba(148,163,184,.4)' }}>
                             <Pencil size={13}/>
                           </button>
                           <button onClick={() => setConfirmId(m.id)}
-                            style={{ width:30, height:30, borderRadius:7, border:'none', background:'rgba(255,255,255,.04)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'rgba(148,163,184,.4)', transition:'all .2s' }}
-                            onMouseEnter={e => { const b=e.currentTarget as HTMLButtonElement; b.style.background='rgba(248,113,113,.12)'; b.style.color='#f87171'; }}
-                            onMouseLeave={e => { const b=e.currentTarget as HTMLButtonElement; b.style.background='rgba(255,255,255,.04)'; b.style.color='rgba(148,163,184,.4)'; }}>
+                            style={{ width:30, height:30, borderRadius:7, border:'none', background:'rgba(255,255,255,.04)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'rgba(148,163,184,.4)' }}>
                             <Trash2 size={13}/>
                           </button>
                         </div>
@@ -289,29 +270,122 @@ export default function SalesTeamPage() {
         </div>
       )}
 
-      {showModal && (
-        <Modal
-          title={tab === 'leaders' ? 'Add Team Leader' : 'Add Sales Team Member'}
-          subtitle={tab === 'leaders' ? 'Team leader can add agents and view their team\'s performance' : 'Create a new sales team account'}
-          onClose={() => setShowModal(false)}
-          onSubmit={handleCreate}
-          btnLabel={tab === 'leaders' ? 'Create Team Leader' : 'Create Member'}
-        />
+      {/* Create / Edit Modal */}
+      {(showModal || editMember) && (
+        <div style={{ position:'fixed', inset:0, zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
+          <div onClick={() => { setShowModal(false); setEditMember(null); }} style={{ position:'absolute', inset:0, background:'rgba(0,0,0,.75)', backdropFilter:'blur(6px)' }} />
+          <div style={{ position:'relative', zIndex:1, width:'100%', maxWidth:440, background:'#0e0e20', border:'1px solid rgba(124,58,237,.3)', borderRadius:18, padding:28 }}>
+            <h2 style={{ fontSize:'1.05rem', fontWeight:700, color:'#f1f5f9', marginBottom:4 }}>
+              {isCreate ? (tab==='leaders' ? 'Add Team Leader' : 'Add Sales Team Member') : 'Edit Member'}
+            </h2>
+            <p style={{ fontSize:'.82rem', color:'rgba(148,163,184,.5)', marginBottom:20 }}>
+              {isCreate ? (tab==='leaders' ? 'Team leader can add agents and view team performance' : 'Create a new sales team account') : editMember?.email}
+            </p>
+            <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+              <div>
+                <label style={lbl}>Full Name{isCreate && ' *'}</label>
+                <input style={inp} value={isCreate ? form.full_name : eForm.full_name}
+                  onChange={e => isCreate ? setForm(f=>({...f,full_name:e.target.value})) : setEForm(f=>({...f,full_name:e.target.value}))}
+                  placeholder="Jane Smith" />
+              </div>
+              {isCreate && <>
+                <div>
+                  <label style={lbl}>Email *</label>
+                  <input style={inp} type="email" value={form.email} onChange={e => setForm(f=>({...f,email:e.target.value}))} placeholder="jane@webmaniacs.com" />
+                </div>
+                <div>
+                  <label style={lbl}>Password *</label>
+                  <input style={inp} type="password" value={form.password} onChange={e => setForm(f=>({...f,password:e.target.value}))} placeholder="Min. 8 characters" />
+                </div>
+              </>}
+              {!isCreate && (
+                <div>
+                  <label style={lbl}>New Password (leave blank to keep)</label>
+                  <input style={inp} type="password" value={eForm.new_password} onChange={e => setEForm(f=>({...f,new_password:e.target.value}))} placeholder="Min. 8 characters" />
+                </div>
+              )}
+              <div>
+                <label style={lbl}>Assign Team{isCreate && ' *'}</label>
+                <select style={sel} value={isCreate ? form.sales_team_group : eForm.sales_team_group}
+                  onChange={e => isCreate ? setForm(f=>({...f,sales_team_group:e.target.value})) : setEForm(f=>({...f,sales_team_group:e.target.value}))}>
+                  <option value="">Select team...</option>
+                  {TEAMS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                </select>
+              </div>
+              {tab === 'leaders' && (
+                <div>
+                  <label style={lbl}>Assign Shift</label>
+                  <select style={sel} value={isCreate ? form.shift_id : eForm.shift_id}
+                    onChange={e => isCreate ? setForm(f=>({...f,shift_id:e.target.value})) : setEForm(f=>({...f,shift_id:e.target.value}))}>
+                    <option value="">No shift assigned</option>
+                    {(shifts as any[]).filter(s=>s.is_active).map(s => (
+                      <option key={s.id} value={s.id}>{s.name}{s.start_time&&s.end_time ? ` (${s.start_time}–${s.end_time})` : ''}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
+            <div style={{ display:'flex', gap:10, marginTop:20 }}>
+              <button className="wm-btn-ghost" onClick={() => { setShowModal(false); setEditMember(null); }} style={{ flex:1, height:40 }}>Cancel</button>
+              <button className="wm-btn-primary" style={{ flex:1, height:40 }} disabled={loading}
+                onClick={isCreate ? handleCreate : handleEdit}>
+                {loading ? 'Saving...' : isCreate ? (tab==='leaders' ? 'Create Team Leader' : 'Create Member') : 'Save Changes'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
-      {editMember && (
-        <Modal
-          title="Edit Member"
-          subtitle={editMember.email}
-          onClose={() => setEditMember(null)}
-          onSubmit={handleEdit}
-          btnLabel="Save Changes"
-        />
+      {/* Assign Target Modal */}
+      {targetModal && (
+        <div style={{ position:'fixed', inset:0, zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
+          <div onClick={() => setTargetModal(null)} style={{ position:'absolute', inset:0, background:'rgba(0,0,0,.75)', backdropFilter:'blur(6px)' }} />
+          <div style={{ position:'relative', zIndex:1, width:'100%', maxWidth:420, background:'#0e0e20', border:'1px solid rgba(52,211,153,.25)', borderRadius:18, padding:28 }}>
+            <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4 }}>
+              <Target size={16} style={{ color:'#34d399' }}/>
+              <h2 style={{ fontSize:'1.05rem', fontWeight:700, color:'#f1f5f9' }}>Assign Target</h2>
+            </div>
+            <p style={{ fontSize:'.82rem', color:'rgba(148,163,184,.5)', marginBottom:20 }}>{targetModal.full_name}</p>
+            <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+              <div style={{ display:'flex', gap:12 }}>
+                <div style={{ flex:1 }}>
+                  <label style={lbl}>Month</label>
+                  <select style={sel} value={targetForm.month} onChange={e => setTargetForm(f=>({...f,month:parseInt(e.target.value)}))}>
+                    {MONTHS.map((m,i) => <option key={i} value={i+1}>{m}</option>)}
+                  </select>
+                </div>
+                <div style={{ flex:1 }}>
+                  <label style={lbl}>Year</label>
+                  <select style={sel} value={targetForm.year} onChange={e => setTargetForm(f=>({...f,year:parseInt(e.target.value)}))}>
+                    {[2025,2026,2027].map(y => <option key={y} value={y}>{y}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label style={lbl}>Target Amount *</label>
+                <input style={inp} type="number" min="0" value={targetForm.target_amount}
+                  onChange={e => setTargetForm(f=>({...f,target_amount:e.target.value}))} placeholder="e.g. 20000" />
+              </div>
+              <div>
+                <label style={lbl}>Currency</label>
+                <select style={sel} value={targetForm.currency} onChange={e => setTargetForm(f=>({...f,currency:e.target.value}))}>
+                  {['USD','AUD','NZD','GBP','EUR'].map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+            </div>
+            <div style={{ display:'flex', gap:10, marginTop:20 }}>
+              <button className="wm-btn-ghost" onClick={() => setTargetModal(null)} style={{ flex:1, height:40 }}>Cancel</button>
+              <button className="wm-btn-primary" onClick={saveTarget} disabled={targetSaving} style={{ flex:1, height:40 }}>
+                {targetSaving ? 'Saving...' : 'Assign Target'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       <ConfirmDialog
         open={!!confirmId}
-        title={tab === 'leaders' ? 'Remove Team Leader' : 'Remove Sales Team Member'}
+        title={tab==='leaders' ? 'Remove Team Leader' : 'Remove Sales Team Member'}
         description="This will permanently delete this user and all their data."
         onConfirm={() => confirmId && handleDelete(confirmId)}
         onCancel={() => setConfirmId(null)}

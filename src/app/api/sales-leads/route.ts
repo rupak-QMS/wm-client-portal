@@ -82,7 +82,7 @@ export async function POST(req: NextRequest) {
       collected_amount: collected_amount ? parseFloat(collected_amount) : null,
       currency:         currency || 'USD',
       sales_stage:      sales_stage || 'prospecting',
-      sales_team_group: (user as any).sales_team_group ?? null,
+      team_id: (user as any).team_id ?? null,
       notes,
       status: 'draft',
     },

@@ -11,23 +11,18 @@ function getAdminClient() {
   );
 }
 
-// GET — team leader fetches their team's agents + achieved amounts
 export async function GET() {
   const me = await getCurrentUser();
   if (me?.role !== 'team_leader') return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
   const agents = await prisma.user.findMany({
-    where: { sales_team_group: me.sales_team_group ?? undefined, role: 'sales_team' },
-    select: { id: true, full_name: true, email: true, status: true, sales_team_group: true },
+    where: { team_id: (me as any).team_id ?? undefined, role: 'sales_team' },
+    select: { id: true, full_name: true, email: true, status: true, team_id: true, team: { select: { name: true } } },
     orderBy: { full_name: 'asc' },
   });
 
-  // Achieved = sum of collected_amount on approved/assigned leads
   const leads = await prisma.salesLead.findMany({
-    where: {
-      sales_team_group: me.sales_team_group ?? undefined,
-      status: { in: ['approved', 'assigned'] },
-    },
+    where: { team_id: (me as any).team_id ?? undefined, status: { in: ['approved', 'assigned'] } },
     select: { created_by: true, collected_amount: true },
   });
 
@@ -41,7 +36,6 @@ export async function GET() {
   });
 }
 
-// POST — team leader adds a new agent (status = pending)
 export async function POST(req: Request) {
   const me = await getCurrentUser();
   if (me?.role !== 'team_leader') return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
@@ -51,7 +45,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'All fields required' }, { status: 400 });
 
   const admin = getAdminClient();
-
   const { data, error } = await admin.auth.admin.createUser({
     email, password, email_confirm: true,
     user_metadata: { full_name, role: 'sales_team' },
@@ -62,18 +55,8 @@ export async function POST(req: Request) {
 
   await prisma.user.upsert({
     where:  { id: data.user.id },
-    update: {
-      full_name, role: 'sales_team',
-      sales_team_group: me.sales_team_group ?? null,
-      status:           'pending',
-      created_by_leader: me.id,
-    },
-    create: {
-      id: data.user.id, email, full_name, role: 'sales_team',
-      sales_team_group:  me.sales_team_group ?? null,
-      status:            'pending',
-      created_by_leader: me.id,
-    },
+    update: { full_name, role: 'sales_team', team_id: (me as any).team_id ?? null, status: 'pending', created_by_leader: me.id },
+    create: { id: data.user.id, email, full_name, role: 'sales_team', team_id: (me as any).team_id ?? null, status: 'pending', created_by_leader: me.id },
   });
 
   return NextResponse.json({ success: true });
