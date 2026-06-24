@@ -20,7 +20,7 @@ export default function TeamLeaderDashboard() {
   const active  = agents.filter(a => a.status === 'active');
   const pending = agents.filter(a => a.status === 'pending');
   const total   = active.reduce((s: number, a: any) => s + (a.achieved ?? 0), 0);
-  const team    = agents[0]?.sales_team_group ?? '';
+  const team = agents[0]?.team?.name ?? "";
   const color   = TEAM_COLORS[team] ?? '#7c3aed';
 
   const card = (icon: React.ReactNode, label: string, value: string | number) => (

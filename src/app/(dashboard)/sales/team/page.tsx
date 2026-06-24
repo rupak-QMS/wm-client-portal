@@ -45,7 +45,7 @@ export default function SalesTeamPage() {
   const myRank      = ranked.findIndex((m: any) => m.id === (user as any)?.id) + 1;
   const myData      = ranked.find((m: any) => m.id === (user as any)?.id);
   const teamTotal   = ranked.reduce((s: number, m: any) => s + (m.achieved ?? 0), 0);
-  const teamLabel   = TEAM_LABEL[(user as any)?.sales_team_group] ?? 'Your Team';
+  const teamLabel = (user as any)?.team?.name ?? (user as any)?.team_id ?? "Your Team";
 
   const getTarget = (memberId: string) =>
     parseFloat(targets.find((t: any) => t.sales_member_id === memberId)?.target_revenue ?? 0);
