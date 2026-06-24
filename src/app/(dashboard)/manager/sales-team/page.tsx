@@ -1,23 +1,21 @@
 'use client';
 import { useState }                              from 'react';
 import { useQuery, useQueryClient }              from '@tanstack/react-query';
-import { UserPlus, Mail, Trash2, Users, Pencil, Crown, Clock, Target } from 'lucide-react';
+import { UserPlus, Mail, Trash2, Users, Pencil, Crown, Target } from 'lucide-react';
 import { formatTime }                            from '@/lib/utils';
 import { createUserAction, deleteUserAction, updateUserAction } from '@/lib/auth';
 import { toast }                                 from 'sonner';
 import { ConfirmDialog }                         from '@/components/shared/ConfirmDialog';
 
-const TEAMS = [
-  { value: 'aus_nz',    label: 'Aus/NZ Sales Team'   },
-  { value: 'uk',        label: 'UK Sales Team'        },
-  { value: 'us_canada', label: 'US/Canada Sales Team' },
-];
-const TEAM_COLORS: Record<string, { bg: string; color: string; border: string }> = {
-  aus_nz:    { bg: 'rgba(52,211,153,.12)',  color: '#34d399', border: 'rgba(52,211,153,.25)'  },
-  uk:        { bg: 'rgba(96,165,250,.12)',  color: '#60a5fa', border: 'rgba(96,165,250,.25)'  },
-  us_canada: { bg: 'rgba(244,114,182,.12)', color: '#f472b6', border: 'rgba(244,114,182,.25)' },
-};
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+const TEAM_COLORS = [
+  { bg:'rgba(52,211,153,.12)',  color:'#34d399', border:'rgba(52,211,153,.25)'  },
+  { bg:'rgba(96,165,250,.12)',  color:'#60a5fa', border:'rgba(96,165,250,.25)'  },
+  { bg:'rgba(244,114,182,.12)', color:'#f472b6', border:'rgba(244,114,182,.25)' },
+  { bg:'rgba(251,191,36,.12)',  color:'#fbbf24', border:'rgba(251,191,36,.25)'  },
+  { bg:'rgba(167,139,250,.12)', color:'#a78bfa', border:'rgba(167,139,250,.25)' },
+];
 
 const inp: React.CSSProperties = { width:'100%', height:40, background:'rgba(255,255,255,.04)', border:'1px solid rgba(124,58,237,.18)', borderRadius:9, padding:'0 12px', fontSize:'.85rem', color:'#f1f5f9', outline:'none', boxSizing:'border-box' };
 const sel: React.CSSProperties = { ...inp, cursor:'pointer' };
@@ -35,53 +33,58 @@ export default function SalesTeamPage() {
   const [confirmId,    setConfirmId]    = useState<string|null>(null);
   const [isDeleting,   setIsDeleting]   = useState(false);
   const [loading,      setLoading]      = useState(false);
-  const [form,  setForm]  = useState({ full_name:'', email:'', password:'', sales_team_group:'', shift_id:'' });
-  const [eForm, setEForm] = useState({ full_name:'', sales_team_group:'', new_password:'', shift_id:'' });
+  const [form,  setForm]  = useState({ full_name:'', email:'', password:'', team_id:'' });
+  const [eForm, setEForm] = useState({ full_name:'', team_id:'', new_password:'' });
   const [targetModal,  setTargetModal]  = useState<any>(null);
-  const [targetForm,   setTargetForm]   = useState({ month: now.getMonth()+1, year: now.getFullYear(), target_amount:'', currency:'USD' });
+  const [targetForm,   setTargetForm]   = useState({ team_id:'', month: now.getMonth()+1, year: now.getFullYear(), target_amount:'', currency:'USD' });
   const [targetSaving, setTargetSaving] = useState(false);
+
+  const { data: teams = [] } = useQuery<any[]>({
+    queryKey: ['teams'],
+    queryFn:  async () => (await fetch('/api/teams')).json().then((r:any) => r.data ?? []),
+  });
 
   const { data: members = [], isLoading: membersLoading } = useQuery({
     queryKey: ['sales-members'],
-    queryFn:  async () => (await (await fetch('/api/sales-members')).json()).data ?? [],
+    queryFn:  async () => (await fetch('/api/sales-members')).json().then((r:any) => r.data ?? []),
   });
+
   const { data: leaders = [], isLoading: leadersLoading } = useQuery({
     queryKey: ['team-leaders'],
-    queryFn:  async () => (await (await fetch('/api/sales-members?role=team_leader')).json()).data ?? [],
-  });
-  const { data: shifts = [] } = useQuery<any[]>({
-    queryKey: ['shifts'],
-    queryFn:  async () => (await (await fetch('/api/shifts')).json()).data ?? [],
+    queryFn:  async () => (await fetch('/api/sales-members?role=team_leader')).json().then((r:any) => r.data ?? []),
   });
 
   const isLoading = tab === 'agents' ? membersLoading : leadersLoading;
   const list      = tab === 'agents' ? members : leaders;
-  const filtered  = filterTeam === 'all' ? list : list.filter((m:any) => m.sales_team_group === filterTeam);
+  const filtered  = filterTeam === 'all' ? list : list.filter((m:any) => m.team_id === filterTeam);
+
+  const teamColor = (idx: number) => TEAM_COLORS[idx % TEAM_COLORS.length];
+  const teamName  = (team_id: string) => teams.find((t:any) => t.id === team_id)?.name ?? 'Unassigned';
+  const teamIdx   = (team_id: string) => teams.findIndex((t:any) => t.id === team_id);
 
   const handleCreate = async () => {
-    if (!form.full_name || !form.email || !form.password || !form.sales_team_group)
+    if (!form.full_name || !form.email || !form.password || !form.team_id)
       return toast.error('All fields including team are required');
     setLoading(true);
     const role   = tab === 'leaders' ? 'team_leader' : 'sales_team';
     const result = await createUserAction({ ...form, role } as any);
     setLoading(false);
     if (result?.error) { toast.error(result.error); return; }
-    toast.success(tab === 'leaders' ? 'Team leader created!' : 'Sales team member created!');
+    toast.success(tab === 'leaders' ? 'Team leader created!' : 'Sales member created!');
     qc.invalidateQueries({ queryKey: ['sales-members'] });
     qc.invalidateQueries({ queryKey: ['team-leaders'] });
     setShowModal(false);
-    setForm({ full_name:'', email:'', password:'', sales_team_group:'', shift_id:'' });
+    setForm({ full_name:'', email:'', password:'', team_id:'' });
   };
 
   const handleEdit = async () => {
     if (!editMember) return;
     setLoading(true);
     const result = await updateUserAction({
-      id:               editMember.id,
-      full_name:        eForm.full_name  || undefined,
-      sales_team_group: eForm.sales_team_group || null,
-      new_password:     eForm.new_password || undefined,
-      shift_id:         tab === 'leaders' ? (eForm.shift_id || null) : undefined,
+      id:           editMember.id,
+      full_name:    eForm.full_name   || undefined,
+      team_id:      eForm.team_id     || null,
+      new_password: eForm.new_password || undefined,
     } as any);
     setLoading(false);
     if (result?.error) { toast.error(result.error); return; }
@@ -106,27 +109,20 @@ export default function SalesTeamPage() {
 
   const openTarget = async (tl: any) => {
     setTargetModal(tl);
-    const res  = await fetch(`/api/manager/team-leader-targets?month=${now.getMonth()+1}&year=${now.getFullYear()}`);
-    const json = await res.json();
-    const existing = (json.data ?? []).find((t:any) => t.team_leader_id === tl.id);
-    setTargetForm({
-      month:         now.getMonth() + 1,
-      year:          now.getFullYear(),
-      target_amount: existing ? String(existing.target_amount) : '',
-      currency:      existing?.currency ?? 'USD',
-    });
+    setTargetForm({ team_id:'', month: now.getMonth()+1, year: now.getFullYear(), target_amount:'', currency:'USD' });
   };
 
   const saveTarget = async () => {
+    if (!targetForm.team_id)      return toast.error('Select a team');
     if (!targetForm.target_amount) return toast.error('Enter a target amount');
     setTargetSaving(true);
-    const meRes = await fetch('/api/users/me');
-    const me    = await meRes.json().catch(() => null);
-    const res   = await fetch('/api/manager/team-leader-targets', {
+    const me   = await fetch('/api/users/me').then(r => r.json()).catch(() => null);
+    const res  = await fetch('/api/manager/team-leader-targets', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify({
         team_leader_id: targetModal.id,
+        team_id:        targetForm.team_id,
         month:          targetForm.month,
         year:           targetForm.year,
         target_amount:  parseFloat(targetForm.target_amount),
@@ -153,7 +149,7 @@ export default function SalesTeamPage() {
             <span style={{ fontSize:'.72rem', color:'rgba(148,163,184,.5)', textTransform:'uppercase', letterSpacing:'.06em' }}>Team</span>
           </div>
           <h1 style={{ fontSize:'1.65rem', fontWeight:700, color:'#f1f5f9', marginBottom:4 }}>Sales Team</h1>
-          <p style={{ fontSize:'.875rem', color:'rgba(148,163,184,.5)' }}>Manage sales agents and team leaders across all regions</p>
+          <p style={{ fontSize:'.875rem', color:'rgba(148,163,184,.5)' }}>Manage sales agents and team leaders across all teams</p>
         </div>
         <button className="wm-btn-primary" onClick={() => setShowModal(true)} style={{ display:'flex', alignItems:'center', gap:7, height:38 }}>
           <UserPlus size={15}/> {tab === 'leaders' ? 'Add Team Leader' : 'Add Sales Member'}
@@ -179,14 +175,15 @@ export default function SalesTeamPage() {
 
       {/* Team filter */}
       <div style={{ display:'flex', gap:8, marginBottom:20, flexWrap:'wrap' }}>
-        {[{ value:'all', label:'All Teams' }, ...TEAMS].map(t => (
-          <button key={t.value} onClick={() => setFilterTeam(t.value)}
-            style={{ padding:'7px 14px', borderRadius:10, border:`1px solid ${filterTeam===t.value?'rgba(167,139,250,.5)':'rgba(124,58,237,.18)'}`,
-              background:filterTeam===t.value?'rgba(124,58,237,.12)':'rgba(255,255,255,.03)',
-              color:filterTeam===t.value?'#a78bfa':'rgba(148,163,184,.6)', fontSize:'.82rem', fontWeight:600, cursor:'pointer' }}>
-            {t.label}
+        {[{ id:'all', name:'All Teams' }, ...teams].map((t:any) => (
+          <button key={t.id} onClick={() => setFilterTeam(t.id)}
+            style={{ padding:'7px 14px', borderRadius:10,
+              border:`1px solid ${filterTeam===t.id ? 'rgba(167,139,250,.5)' : 'rgba(124,58,237,.18)'}`,
+              background: filterTeam===t.id ? 'rgba(124,58,237,.12)' : 'rgba(255,255,255,.03)',
+              color: filterTeam===t.id ? '#a78bfa' : 'rgba(148,163,184,.6)', fontSize:'.82rem', fontWeight:600, cursor:'pointer' }}>
+            {t.name}
             <span style={{ marginLeft:6, padding:'1px 7px', borderRadius:99, background:'rgba(255,255,255,.06)', fontSize:'.7rem', color:'rgba(148,163,184,.4)' }}>
-              {t.value==='all' ? list.length : list.filter((m:any)=>m.sales_team_group===t.value).length}
+              {t.id==='all' ? list.length : list.filter((m:any) => m.team_id===t.id).length}
             </span>
           </button>
         ))}
@@ -201,25 +198,27 @@ export default function SalesTeamPage() {
             <table className="wm-table">
               <thead>
                 <tr>
-                  <th>Name</th><th>Email</th><th>Team</th>
-                  {tab === 'leaders' && <th>Shift</th>}
-                  <th>Joined</th><th style={{ textAlign:'right' }}>Actions</th>
+                  <th>Name</th><th>Email</th><th>Team</th><th>Joined</th>
+                  <th style={{ textAlign:'right' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.length === 0 && (
-                  <tr><td colSpan={tab==='leaders'?6:5} style={{ textAlign:'center', padding:'40px', color:'rgba(148,163,184,.3)' }}>
+                  <tr><td colSpan={5} style={{ textAlign:'center', padding:'40px', color:'rgba(148,163,184,.3)' }}>
                     No {tab==='leaders' ? 'team leaders' : 'members'} yet
                   </td></tr>
                 )}
                 {filtered.map((m:any) => {
-                  const tc = TEAM_COLORS[m.sales_team_group] ?? { bg:'rgba(148,163,184,.1)', color:'rgba(148,163,184,.6)', border:'rgba(148,163,184,.2)' };
+                  const idx = teamIdx(m.team_id);
+                  const tc  = idx >= 0 ? teamColor(idx) : { bg:'rgba(148,163,184,.1)', color:'rgba(148,163,184,.6)', border:'rgba(148,163,184,.2)' };
                   return (
                     <tr key={m.id}>
                       <td>
                         <div style={{ display:'flex', alignItems:'center', gap:10 }}>
                           <div style={{ width:34, height:34, borderRadius:9, flexShrink:0,
-                            background: tab==='leaders' ? 'linear-gradient(135deg,rgba(251,191,36,.3),rgba(167,139,250,.3))' : 'linear-gradient(135deg,rgba(244,114,182,.3),rgba(167,139,250,.3))',
+                            background: tab==='leaders'
+                              ? 'linear-gradient(135deg,rgba(251,191,36,.3),rgba(167,139,250,.3))'
+                              : 'linear-gradient(135deg,rgba(244,114,182,.3),rgba(167,139,250,.3))',
                             display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:700, color:'#f1f5f9' }}>
                             {m.full_name?.charAt(0)?.toUpperCase()}
                           </div>
@@ -232,16 +231,9 @@ export default function SalesTeamPage() {
                       <td><div style={{ display:'flex', alignItems:'center', gap:6, fontSize:'.82rem', color:'rgba(148,163,184,.6)' }}><Mail size={12}/>{m.email}</div></td>
                       <td>
                         <span style={{ padding:'3px 10px', borderRadius:99, fontSize:'.7rem', fontWeight:500, background:tc.bg, color:tc.color, border:`0.5px solid ${tc.border}` }}>
-                          {TEAMS.find(t=>t.value===m.sales_team_group)?.label ?? 'Unassigned'}
+                          {m.team?.name ?? teamName(m.team_id)}
                         </span>
                       </td>
-                      {tab === 'leaders' && (
-                        <td>
-                          {m.shift?.name
-                            ? <div style={{ display:'flex', alignItems:'center', gap:5, fontSize:'.8rem', color:'rgba(148,163,184,.6)' }}><Clock size={12} style={{ color:'#34d399' }}/>{m.shift.name}</div>
-                            : <span style={{ fontSize:'.8rem', color:'rgba(148,163,184,.3)' }}>—</span>}
-                        </td>
-                      )}
                       <td style={{ fontSize:'.8rem', color:'rgba(148,163,184,.45)' }}>{formatTime(m.created_at)}</td>
                       <td style={{ textAlign:'right' }}>
                         <div style={{ display:'flex', gap:6, justifyContent:'flex-end' }}>
@@ -251,7 +243,7 @@ export default function SalesTeamPage() {
                               <Target size={12}/> Target
                             </button>
                           )}
-                          <button onClick={() => { setEditMember(m); setEForm({ full_name:m.full_name, sales_team_group:m.sales_team_group??'', new_password:'', shift_id:m.shift_id??'' }); }}
+                          <button onClick={() => { setEditMember(m); setEForm({ full_name:m.full_name, team_id:m.team_id??'', new_password:'' }); }}
                             style={{ width:30, height:30, borderRadius:7, border:'none', background:'rgba(255,255,255,.04)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'rgba(148,163,184,.4)' }}>
                             <Pencil size={13}/>
                           </button>
@@ -276,10 +268,10 @@ export default function SalesTeamPage() {
           <div onClick={() => { setShowModal(false); setEditMember(null); }} style={{ position:'absolute', inset:0, background:'rgba(0,0,0,.75)', backdropFilter:'blur(6px)' }} />
           <div style={{ position:'relative', zIndex:1, width:'100%', maxWidth:440, background:'#0e0e20', border:'1px solid rgba(124,58,237,.3)', borderRadius:18, padding:28 }}>
             <h2 style={{ fontSize:'1.05rem', fontWeight:700, color:'#f1f5f9', marginBottom:4 }}>
-              {isCreate ? (tab==='leaders' ? 'Add Team Leader' : 'Add Sales Team Member') : 'Edit Member'}
+              {isCreate ? (tab==='leaders' ? 'Add Team Leader' : 'Add Sales Member') : 'Edit Member'}
             </h2>
             <p style={{ fontSize:'.82rem', color:'rgba(148,163,184,.5)', marginBottom:20 }}>
-              {isCreate ? (tab==='leaders' ? 'Team leader can add agents and view team performance' : 'Create a new sales team account') : editMember?.email}
+              {isCreate ? (tab==='leaders' ? 'Team leader can manage agents and distribute targets' : 'Create a new sales team account') : editMember?.email}
             </p>
             <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
               <div>
@@ -305,30 +297,17 @@ export default function SalesTeamPage() {
                 </div>
               )}
               <div>
-                <label style={lbl}>Assign Team{isCreate && ' *'}</label>
-                <select style={sel} value={isCreate ? form.sales_team_group : eForm.sales_team_group}
-                  onChange={e => isCreate ? setForm(f=>({...f,sales_team_group:e.target.value})) : setEForm(f=>({...f,sales_team_group:e.target.value}))}>
+                <label style={lbl}>Assign Team *</label>
+                <select style={sel} value={isCreate ? form.team_id : eForm.team_id}
+                  onChange={e => isCreate ? setForm(f=>({...f,team_id:e.target.value})) : setEForm(f=>({...f,team_id:e.target.value}))}>
                   <option value="">Select team...</option>
-                  {TEAMS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                  {teams.map((t:any) => <option key={t.id} value={t.id}>{t.name}</option>)}
                 </select>
               </div>
-              {tab === 'leaders' && (
-                <div>
-                  <label style={lbl}>Assign Shift</label>
-                  <select style={sel} value={isCreate ? form.shift_id : eForm.shift_id}
-                    onChange={e => isCreate ? setForm(f=>({...f,shift_id:e.target.value})) : setEForm(f=>({...f,shift_id:e.target.value}))}>
-                    <option value="">No shift assigned</option>
-                    {(shifts as any[]).filter(s=>s.is_active).map(s => (
-                      <option key={s.id} value={s.id}>{s.name}{s.start_time&&s.end_time ? ` (${s.start_time}–${s.end_time})` : ''}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
             </div>
             <div style={{ display:'flex', gap:10, marginTop:20 }}>
               <button className="wm-btn-ghost" onClick={() => { setShowModal(false); setEditMember(null); }} style={{ flex:1, height:40 }}>Cancel</button>
-              <button className="wm-btn-primary" style={{ flex:1, height:40 }} disabled={loading}
-                onClick={isCreate ? handleCreate : handleEdit}>
+              <button className="wm-btn-primary" style={{ flex:1, height:40 }} disabled={loading} onClick={isCreate ? handleCreate : handleEdit}>
                 {loading ? 'Saving...' : isCreate ? (tab==='leaders' ? 'Create Team Leader' : 'Create Member') : 'Save Changes'}
               </button>
             </div>
@@ -347,6 +326,13 @@ export default function SalesTeamPage() {
             </div>
             <p style={{ fontSize:'.82rem', color:'rgba(148,163,184,.5)', marginBottom:20 }}>{targetModal.full_name}</p>
             <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+              <div>
+                <label style={lbl}>Team *</label>
+                <select style={sel} value={targetForm.team_id} onChange={e => setTargetForm(f=>({...f,team_id:e.target.value}))}>
+                  <option value="">Select team...</option>
+                  {teams.map((t:any) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                </select>
+              </div>
               <div style={{ display:'flex', gap:12 }}>
                 <div style={{ flex:1 }}>
                   <label style={lbl}>Month</label>
