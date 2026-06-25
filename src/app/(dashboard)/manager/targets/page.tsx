@@ -12,11 +12,6 @@ const MONTHS     = ['January','February','March','April','May','June','July','Au
 const CURRENCIES = ['USD','GBP','EUR','AUD','INR','SGD'];
 const NOW        = new Date();
 
-const TEAMS = [
-  { value: 'aus_nz',    label: 'Aus/NZ Sales Team'      },
-  { value: 'uk',        label: 'UK Sales Team'           },
-  { value: 'us_canada', label: 'US/Canada Sales Team'    },
-];
 
 const inp: React.CSSProperties = { width:'100%', height:40, background:'rgba(255,255,255,.04)', border:'1px solid rgba(124,58,237,.18)', borderRadius:9, padding:'0 12px', fontSize:'.85rem', color:'#f1f5f9', outline:'none' };
 const sel: React.CSSProperties = { ...inp, cursor:'pointer' };
@@ -27,7 +22,10 @@ export default function TargetsPage() {
   const [tab,   setTab]   = useState<'am' | 'sales'>('am');
   const [month, setMonth] = useState(NOW.getMonth() + 1);
   const [year,  setYear]  = useState(NOW.getFullYear());
-  const [salesTeam, setSalesTeam] = useState<string>('aus_nz');
+  const [salesTeam, setSalesTeam] = useState<string>('');
+
+  const { data: teams = [] } = useQuery<any[]>({ queryKey: ['teams'], queryFn: async () => (await fetch('/api/teams')).json().then((r) => r.data ?? []) });
+
 
   // AM modal state
   const [showAMModal,  setShowAMModal]  = useState(false);
@@ -291,10 +289,10 @@ export default function TargetsPage() {
       {tab==='sales' && (<>
         {/* Team selector */}
         <div style={{display:'flex',gap:8,marginBottom:20,flexWrap:'wrap'}}>
-          {TEAMS.map(t=>(
-            <button key={t.value} onClick={()=>setSalesTeam(t.value)}
-              style={{padding:'8px 16px',borderRadius:10,border:`1px solid ${salesTeam===t.value?'rgba(244,114,182,.5)':'rgba(124,58,237,.18)'}`,background:salesTeam===t.value?'rgba(244,114,182,.1)':'rgba(255,255,255,.03)',color:salesTeam===t.value?'#f472b6':'rgba(148,163,184,.6)',fontSize:'.82rem',fontWeight:600,cursor:'pointer',transition:'all .2s'}}>
-              {t.label}
+          {(teams as any[]).map(t=>(
+            <button key={t.value} onClick={()=>setSalesTeam(t.id)}
+              style={{padding:'8px 16px',borderRadius:10,border:`1px solid ${salesTeam===t.id?'rgba(244,114,182,.5)':'rgba(124,58,237,.18)'}`,background:salesTeam===t.id?'rgba(244,114,182,.1)':'rgba(255,255,255,.03)',color:salesTeam===t.id?'#f472b6':'rgba(148,163,184,.6)',fontSize:'.82rem',fontWeight:600,cursor:'pointer',transition:'all .2s'}}>
+              {t.name}
             </button>
           ))}
         </div>
@@ -305,7 +303,7 @@ export default function TargetsPage() {
             {label:'Team Revenue Target',value:salesTotalTarget>0?`$${salesTotalTarget.toLocaleString()}`:'—',sub:`Target for ${MONTHS[month-1]}`,icon:Target,color:'#f472b6'},
             {label:'Total Collected',value:salesTotalAchieved>0?`$${salesTotalAchieved.toLocaleString()}`:'$0',sub:`${salesTeamPct.toFixed(1)}% of target`,icon:TrendingUp,color:'#34d399'},
             {label:'Total Left',value:salesTotalLeft>0?`$${salesTotalLeft.toLocaleString()}`:'$0',sub:`${(100-salesTeamPct).toFixed(1)}% remaining`,icon:AlertCircle,color:'#fbbf24'},
-            {label:'Team Members',value:String(salesMembers.length),sub:TEAMS.find(t=>t.value===salesTeam)?.label??'',icon:Users,color:'#60a5fa'},
+            {label:'Team Members',value:String(salesMembers.length),sub:(teams as any[]).find(t=>t.id===salesTeam)?.name??'',icon:Users,color:'#60a5fa'},
           ].map(({label,value,sub,icon:Icon,color})=>(
             <div key={label} className="wm-stat">
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:12}}>
@@ -335,7 +333,7 @@ export default function TargetsPage() {
         {/* Sales Table */}
         <div className="wm-card wm-fade-up-2" style={{overflow:'hidden'}}>
           <div style={{padding:'18px 22px',borderBottom:'1px solid rgba(124,58,237,.1)',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-            <p style={{fontSize:'.95rem',fontWeight:600,color:'#f1f5f9'}}>{TEAMS.find(t=>t.value===salesTeam)?.label}</p>
+            <p style={{fontSize:'.95rem',fontWeight:600,color:'#f1f5f9'}}>{(teams as any[]).find(t=>t.id===salesTeam)?.name}</p>
             <p style={{fontSize:'.75rem',color:'rgba(148,163,184,.4)'}}>Targets reset on the 1st of every month</p>
           </div>
           {(salesLoading||membersLoading) ? <div style={{textAlign:'center',padding:40,color:'rgba(148,163,184,.3)'}}>Loading...</div>
