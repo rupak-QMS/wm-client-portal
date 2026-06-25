@@ -15,6 +15,17 @@ const ROLE_ROUTES: Record<string, string[]> = {
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request });
 
+  const pathname = request.nextUrl.pathname;
+
+  // Always allow API routes, public routes, and auth routes
+  if (
+    pathname.startsWith('/api/') ||
+    PUBLIC_ROUTES.some(r => pathname === r) ||
+    pathname.startsWith('/api/auth')
+  ) {
+    return response;
+  }
+
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -31,12 +42,6 @@ export async function middleware(request: NextRequest) {
   );
 
   const { data: { user } } = await supabase.auth.getUser();
-  const pathname = request.nextUrl.pathname;
-
-  // Allow public routes
-  if (PUBLIC_ROUTES.some(r => pathname === r || pathname.startsWith('/api/auth'))) {
-    return response;
-  }
 
   // Not logged in → redirect to login
   if (!user) {
@@ -59,8 +64,10 @@ export async function middleware(request: NextRequest) {
     for (const [r, prefixes] of Object.entries(ROLE_ROUTES)) {
       if (r !== role && prefixes.some(p => pathname.startsWith(p))) {
         const dashPath =
-          role === 'manager'         ? '/manager/dashboard' :
-          role === 'account_manager' ? '/account/dashboard' :
+          role === 'manager'         ? '/manager/dashboard'     :
+          role === 'account_manager' ? '/account/dashboard'     :
+          role === 'sales_team'      ? '/sales/dashboard'       :
+          role === 'team_leader'     ? '/team-leader/dashboard' :
                                        '/client/dashboard';
         return NextResponse.redirect(new URL(dashPath, request.url));
       }
