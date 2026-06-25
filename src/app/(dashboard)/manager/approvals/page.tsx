@@ -3,7 +3,7 @@ import { useState }                              from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   CheckCircle, XCircle, Trash2, Clock,
-  Building2, UserCheck, CheckSquare, MessageSquare,
+  Building2, UserCheck, CheckSquare, MessageSquare, Users,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -36,7 +36,7 @@ type AM = { id: string; full_name: string };
 
 export default function ApprovalsPage() {
   const qc = useQueryClient();
-  const [tab,             setTab]             = useState<'sales' | 'deletions'>('sales');
+  const [tab,             setTab]             = useState<'sales' | 'deletions' | 'agents'>('sales');
   const [selected,        setSelected]        = useState<Lead | null>(null);
   const [deleteSelected,  setDeleteSelected]  = useState<DeleteReq | null>(null);
   const [actionModal,     setActionModal]      = useState<'approve' | 'reject' | 'assign' | 'note' | 'confirmDelete' | null>(null);
@@ -59,6 +59,11 @@ export default function ApprovalsPage() {
   const { data: ams = [] } = useQuery<AM[]>({
     queryKey: ['account-managers'],
     queryFn:  async () => (await (await fetch('/api/users?role=account_manager')).json()).data ?? [],
+  });
+
+  const { data: pendingAgents = [], isLoading: agentsLoading } = useQuery<any[]>({
+    queryKey: ['pending-agents'],
+    queryFn:  async () => (await (await fetch('/api/users/pending')).json()).data ?? [],
   });
 
   /* ── mutations ── */
@@ -103,7 +108,8 @@ export default function ApprovalsPage() {
 
   const pendingLeads   = leads.filter((l: any) => l.status === 'pending_approval');
   const pendingDeletes = deleteReqs.filter(r => r.status === 'pending');
-  const totalPending   = pendingLeads.length + pendingDeletes.length;
+  const pendingAgentsList = pendingAgents.filter((a:any) => a.status === "pending");
+  const totalPending   = pendingLeads.length + pendingDeletes.length + pendingAgentsList.length;
 
   return (
     <div className="wm-page-inner">
@@ -130,6 +136,7 @@ export default function ApprovalsPage() {
         {([
           { key:'sales',     label:'Sales Leads',      count: pendingLeads.length,   color:'#fbbf24' },
           { key:'deletions', label:'Delete Requests',  count: pendingDeletes.length, color:'#f87171' },
+          { key:'agents',    label:'New Agents',       count: pendingAgentsList.length, color:'#34d399' },
         ] as const).map(t => (
           <button key={t.key} onClick={() => setTab(t.key)}
             style={{ padding:'8px 16px', fontSize:'.85rem', fontWeight:600, border:'none', background:'none', cursor:'pointer', color: tab === t.key ? '#f1f5f9' : 'rgba(148,163,184,.4)', borderBottom: tab === t.key ? '2px solid #a78bfa' : '2px solid transparent', marginBottom:-1, display:'flex', alignItems:'center', gap:7, transition:'all .2s' }}>
@@ -291,6 +298,73 @@ export default function ApprovalsPage() {
                   </div>
                 );
               })}
+            </div>
+          )}
+        </>
+      )}
+
+
+      {/* ── NEW AGENTS TAB ── */}
+      {tab === 'agents' && (
+        <>
+          {pendingAgentsList.length > 0 && (
+            <div style={{ display:'flex', alignItems:'center', gap:10, padding:'12px 16px', borderRadius:12, background:'rgba(52,211,153,.06)', border:'0.5px solid rgba(52,211,153,.2)', marginBottom:16 }}>
+              <Clock size={15} style={{ color:'#34d399' }} />
+              <p style={{ fontSize:'.85rem', color:'rgba(148,163,184,.7)' }}>
+                <span style={{ color:'#34d399', fontWeight:600 }}>{pendingAgentsList.length} agent{pendingAgentsList.length !== 1 ? 's' : ''}</span> waiting for approval
+              </p>
+            </div>
+          )}
+          {agentsLoading ? (
+            <div style={{ textAlign:'center', padding:40, color:'rgba(148,163,184,.3)' }}>Loading...</div>
+          ) : pendingAgents.length === 0 ? (
+            <div className="wm-card" style={{ padding:'60px 24px', textAlign:'center' }}>
+              <Users size={36} style={{ color:'rgba(148,163,184,.15)', margin:'0 auto 12px', display:'block' }} />
+              <p style={{ color:'rgba(148,163,184,.4)' }}>No pending agents</p>
+            </div>
+          ) : (
+            <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+              {pendingAgents.map((a:any) => (
+                <div key={a.id} className="wm-card" style={{ padding:'18px 20px', borderColor:'rgba(52,211,153,.2)' }}>
+                  <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:16 }}>
+                    <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+                      <div style={{ width:38, height:38, borderRadius:9, flexShrink:0, background:'rgba(52,211,153,.12)', display:'flex', alignItems:'center', justifyContent:'center', color:'#34d399', fontWeight:700, fontSize:'.9rem' }}>
+                        {a.full_name?.charAt(0)?.toUpperCase()}
+                      </div>
+                      <div>
+                        <p style={{ fontWeight:600, color:'#f1f5f9', fontSize:'.92rem', marginBottom:2 }}>{a.full_name}</p>
+                        <p style={{ fontSize:'.78rem', color:'rgba(148,163,184,.5)' }}>{a.email}</p>
+                        {a.team?.name && <p style={{ fontSize:'.72rem', color:'#a78bfa', marginTop:2 }}>Team: {a.team.name}</p>}
+                        {a.leader_name && a.leader_name !== '—' && <p style={{ fontSize:'.72rem', color:'rgba(148,163,184,.4)', marginTop:1 }}>Added by: {a.leader_name}</p>}
+                      </div>
+                    </div>
+                    <div style={{ display:'flex', gap:6, flexShrink:0 }}>
+                      <button className="wm-btn-ghost"
+                        style={{ padding:'6px 12px', fontSize:'.75rem', color:'#f87171', borderColor:'rgba(248,113,113,.25)', display:'flex', alignItems:'center', gap:5 }}
+                        onClick={async () => {
+                          const res = await fetch('/api/users/pending', { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ id: a.id, action:'reject' }) });
+                          const json = await res.json();
+                          if (json.error) { toast.error(json.error); return; }
+                          toast.success('Agent rejected');
+                          qc.invalidateQueries({ queryKey: ['pending-agents'] });
+                        }}>
+                        <XCircle size={13}/> Reject
+                      </button>
+                      <button className="wm-btn-primary"
+                        style={{ padding:'6px 12px', fontSize:'.75rem', background:'linear-gradient(135deg,#059669,#10b981)', display:'flex', alignItems:'center', gap:5 }}
+                        onClick={async () => {
+                          const res = await fetch('/api/users/pending', { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ id: a.id, action:'approve' }) });
+                          const json = await res.json();
+                          if (json.error) { toast.error(json.error); return; }
+                          toast.success('Agent approved — they can now log in');
+                          qc.invalidateQueries({ queryKey: ['pending-agents'] });
+                        }}>
+                        <CheckCircle size={13}/> Approve
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </>
