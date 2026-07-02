@@ -1,10 +1,45 @@
 'use client';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Target, ChevronLeft, ChevronRight, TrendingUp, ShoppingBag } from 'lucide-react';
+import { Target, ChevronLeft, ChevronRight, TrendingUp, ShoppingBag, PieChart } from 'lucide-react';
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const NOW    = new Date();
+
+function daysInMonth(month: number, year: number) { return new Date(year, month, 0).getDate(); }
+
+/** Same hand-rolled SVG donut used on the Dashboard/TL/AM pages. */
+function DonutChart({ segments, centerLabel, centerValue }: {
+  segments: { value: number; color: string }[];
+  centerLabel: string;
+  centerValue: string;
+}) {
+  const total = segments.reduce((s, x) => s + x.value, 0) || 1;
+  const radius = 62;
+  const circumference = 2 * Math.PI * radius;
+  let offset = 0;
+  return (
+    <div style={{ position:'relative', width:160, height:160, flexShrink:0 }}>
+      <svg width={160} height={160} viewBox="0 0 160 160" style={{ transform:'rotate(-90deg)' }}>
+        <circle cx={80} cy={80} r={radius} fill="none" stroke="rgba(148,163,184,.12)" strokeWidth={20} />
+        {segments.map((seg, i) => {
+          const frac = seg.value / total;
+          const dash = frac * circumference;
+          const circle = (
+            <circle key={i} cx={80} cy={80} r={radius} fill="none" stroke={seg.color} strokeWidth={20}
+              strokeDasharray={`${dash} ${circumference - dash}`} strokeDashoffset={-offset} strokeLinecap="butt" />
+          );
+          offset += dash;
+          return circle;
+        })}
+      </svg>
+      <div style={{ position:'absolute', inset:0, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center' }}>
+        <div style={{ fontSize:'1.05rem', fontWeight:800, color:'#f1f5f9', textAlign:'center' }}>{centerValue}</div>
+        <div style={{ fontSize:'.68rem', color:'rgba(148,163,184,.5)' }}>{centerLabel}</div>
+      </div>
+    </div>
+  );
+}
 
 export default function SalesTargetsPage() {
   const [month, setMonth] = useState(NOW.getMonth() + 1);
@@ -29,6 +64,13 @@ export default function SalesTargetsPage() {
   const tRevenue   = parseFloat(myTarget?.target_revenue ?? 0);
   const pctRevenue = tRevenue > 0 ? Math.min((revenue / tRevenue) * 100, 100) : 0;
   const pctColor   = pctRevenue >= 100 ? '#34d399' : pctRevenue >= 60 ? '#60a5fa' : pctRevenue >= 30 ? '#fbbf24' : '#f87171';
+  const remaining  = Math.max(tRevenue - revenue, 0);
+
+  const totalDays = daysInMonth(month, year);
+  const daysPassed = (year === NOW.getFullYear() && month === NOW.getMonth() + 1)
+    ? Math.min(NOW.getDate(), totalDays)
+    : (year < NOW.getFullYear() || (year === NOW.getFullYear() && month < NOW.getMonth() + 1)) ? totalDays : 0;
+  const daysRemaining = Math.max(totalDays - daysPassed, 0);
 
   return (
     <div className="wm-page-inner">
@@ -64,6 +106,60 @@ export default function SalesTargetsPage() {
         </div>
       ) : (<>
 
+        {/* NEW: Donut breakdown + About This Period */}
+        <div style={{ display:'grid', gridTemplateColumns:'minmax(280px,1fr) minmax(240px,1fr)', gap:16, marginBottom:16 }} className="wm-fade-up">
+          <div className="wm-card" style={{ padding:'20px 22px' }}>
+            <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:16 }}>
+              <PieChart size={15} style={{ color:'#f472b6' }} />
+              <p style={{ fontSize:'.95rem', fontWeight:600, color:'#f1f5f9' }}>Target Breakdown</p>
+            </div>
+            <div style={{ display:'flex', alignItems:'center', gap:22, flexWrap:'wrap' }}>
+              <DonutChart
+                centerLabel="Target"
+                centerValue={`${myTarget.currency} ${tRevenue.toLocaleString()}`}
+                segments={[
+                  { value: revenue, color: pctColor },
+                  { value: remaining, color: 'rgba(148,163,184,.18)' },
+                ]}
+              />
+              <div style={{ display:'flex', flexDirection:'column', gap:10, flex:1, minWidth:140 }}>
+                <div style={{ display:'flex', alignItems:'flex-start', gap:8 }}>
+                  <div style={{ width:9, height:9, borderRadius:'50%', background:pctColor, marginTop:4, flexShrink:0 }} />
+                  <div>
+                    <div style={{ fontSize:'.82rem', color:'#f1f5f9', fontWeight:600 }}>Collected</div>
+                    <div style={{ fontSize:'.78rem', color:'rgba(148,163,184,.5)' }}>{myTarget.currency} {revenue.toLocaleString()} ({pctRevenue.toFixed(0)}%)</div>
+                  </div>
+                </div>
+                <div style={{ display:'flex', alignItems:'flex-start', gap:8 }}>
+                  <div style={{ width:9, height:9, borderRadius:'50%', background:'rgba(148,163,184,.4)', marginTop:4, flexShrink:0 }} />
+                  <div>
+                    <div style={{ fontSize:'.82rem', color:'#f1f5f9', fontWeight:600 }}>Remaining</div>
+                    <div style={{ fontSize:'.78rem', color:'rgba(148,163,184,.5)' }}>{myTarget.currency} {remaining.toLocaleString()} ({(100-pctRevenue).toFixed(0)}%)</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="wm-card" style={{ padding:'20px 22px' }}>
+            <div style={{ fontWeight:700, color:'#f1f5f9', marginBottom:16, fontSize:'.95rem' }}>About This Period</div>
+            <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+              {[
+                ['Period', `1 ${MONTHS[month-1]} ${year} – ${totalDays} ${MONTHS[month-1]} ${year}`],
+                ['Your Role', 'Sales Agent'],
+                ['Total Working Days', String(totalDays)],
+                ['Days Passed', String(daysPassed)],
+                ['Days Remaining', String(daysRemaining)],
+              ].map(([k, v]) => (
+                <div key={k} style={{ display:'flex', justifyContent:'space-between', fontSize:'.85rem', paddingBottom:10, borderBottom:'1px solid rgba(124,58,237,.08)' }}>
+                  <span style={{ color:'rgba(148,163,184,.5)' }}>{k}</span>
+                  <span style={{ color:'#f1f5f9', fontWeight:600 }}>{v}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
         {/* Main revenue progress card */}
         <div className="wm-card wm-fade-up" style={{ padding:'28px', marginBottom:16 }}>
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:20 }}>
@@ -94,7 +190,7 @@ export default function SalesTargetsPage() {
               Collected: <strong style={{ color:'#34d399' }}>{myTarget.currency} {revenue.toLocaleString()}</strong>
             </span>
             <span style={{ color:'rgba(148,163,184,.5)' }}>
-              Remaining: <strong style={{ color:'#fbbf24' }}>{myTarget.currency} {Math.max(tRevenue - revenue, 0).toLocaleString()}</strong>
+              Remaining: <strong style={{ color:'#fbbf24' }}>{myTarget.currency} {remaining.toLocaleString()}</strong>
             </span>
           </div>
 
