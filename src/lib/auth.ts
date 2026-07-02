@@ -66,6 +66,9 @@ export async function createUserAction(values: CreateUserFormValues & { team_id?
   const me = await getCurrentUser();
   if (me?.role !== 'manager') return { error: 'Unauthorized' };
 
+  const existing = await prisma.user.findUnique({ where: { email: values.email } });
+  if (existing) return { error: `A user with email ${values.email} already exists.` };
+
   const adminClient = getAdminClient();
 
   const { data, error } = await adminClient.auth.admin.createUser({

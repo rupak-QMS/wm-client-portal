@@ -44,6 +44,9 @@ export async function POST(req: Request) {
   if (!full_name || !email || !password)
     return NextResponse.json({ error: 'All fields required' }, { status: 400 });
 
+  const existing = await prisma.user.findUnique({ where: { email } });
+  if (existing) return NextResponse.json({ error: `A user with email ${email} already exists.` }, { status: 400 });
+
   const admin = getAdminClient();
   const { data, error } = await admin.auth.admin.createUser({
     email, password, email_confirm: true,
