@@ -23,6 +23,7 @@ const NAV_MANAGER = [
   { href: '/manager/account-managers', icon: UserCheck,       label: 'Account Managers' },
   { href: '/manager/staff',            icon: Shield,          label: 'Staff Management' },
   { href: '/manager/sales-team',       icon: Users,           label: 'Sales Team'       },
+  { href: '/manager/teams',            icon: Users,           label: 'Teams'            },
 ];
 
 const NAV_ACCOUNT = [
