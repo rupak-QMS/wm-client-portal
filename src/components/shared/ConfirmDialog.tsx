@@ -2,15 +2,17 @@
 import { Loader2 } from 'lucide-react';
 
 interface Props {
-  open:        boolean;
-  title:       string;
-  description: string;
-  onConfirm:   () => void;
-  onCancel:    () => void;
-  loading?:    boolean;
+  open:         boolean;
+  title:        string;
+  description:  string;
+  onConfirm:    () => void;
+  onCancel:     () => void;
+  loading?:     boolean;
+  confirmLabel?: string;
+  confirmColor?: string;
 }
 
-export function ConfirmDialog({ open, title, description, onConfirm, onCancel, loading }: Props) {
+export function ConfirmDialog({ open, title, description, onConfirm, onCancel, loading, confirmLabel = 'Delete', confirmColor = 'linear-gradient(135deg,#dc2626,#ef4444)' }: Props) {
   if (!open) return null;
   return (
     <div style={{ position:'fixed', inset:0, zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
@@ -24,9 +26,9 @@ export function ConfirmDialog({ open, title, description, onConfirm, onCancel, l
             Cancel
           </button>
           <button onClick={onConfirm} disabled={loading}
-            style={{ flex:1, height:40, borderRadius:10, border:'none', background:'linear-gradient(135deg,#dc2626,#ef4444)', color:'#fff', fontSize:'.88rem', fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
+            style={{ flex:1, height:40, borderRadius:10, border:'none', background:confirmColor, color:'#fff', fontSize:'.88rem', fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
             {loading && <Loader2 size={14} className="animate-spin" />}
-            Delete
+            {confirmLabel}
           </button>
         </div>
       </div>

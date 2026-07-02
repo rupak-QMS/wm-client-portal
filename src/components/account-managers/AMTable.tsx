@@ -2,17 +2,17 @@
 import { useState }      from 'react';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { getInitials, formatTime } from '@/lib/utils';
-import { Trash2, Mail }  from 'lucide-react';
+import { Mail, ToggleLeft, ToggleRight } from 'lucide-react';
 import type { User }     from '@/types';
 
 interface Props {
   managers:   User[];
-  onDelete:   (id: string) => void;
-  isDeleting: boolean;
+  onToggle:   (id: string, status: string) => void;
+  isToggling: boolean;
 }
 
-export function AMTable({ managers, onDelete, isDeleting }: Props) {
-  const [confirmId, setConfirmId] = useState<string | null>(null);
+export function AMTable({ managers, onToggle, isToggling }: Props) {
+  const [confirmUser, setConfirmUser] = useState<User | null>(null);
 
   return (
     <>
@@ -36,7 +36,7 @@ export function AMTable({ managers, onDelete, isDeleting }: Props) {
                   </td>
                 </tr>
               )}
-              {managers.map(am => (
+              {managers.map((am: any) => (
                 <tr key={am.id}>
                   <td>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -45,10 +45,11 @@ export function AMTable({ managers, onDelete, isDeleting }: Props) {
                         background: 'linear-gradient(135deg,rgba(124,58,237,.4),rgba(59,130,246,.4))',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         fontSize: 12, fontWeight: 700, color: '#f1f5f9',
+                        opacity: am.status === 'inactive' ? 0.5 : 1,
                       }}>
                         {getInitials(am.full_name)}
                       </div>
-                      <span style={{ fontWeight: 500, color: '#f1f5f9', fontSize: '.87rem' }}>
+                      <span style={{ fontWeight: 500, color: am.status === 'inactive' ? 'rgba(148,163,184,.4)' : '#f1f5f9', fontSize: '.87rem' }}>
                         {am.full_name}
                       </span>
                     </div>
@@ -65,25 +66,24 @@ export function AMTable({ managers, onDelete, isDeleting }: Props) {
                   <td>
                     <span style={{
                       padding: '3px 10px', borderRadius: 99, fontSize: '.7rem', fontWeight: 500,
-                      background: 'rgba(52,211,153,.12)', color: '#34d399',
-                      border: '0.5px solid rgba(52,211,153,.25)',
+                      background: am.status === 'active' ? 'rgba(52,211,153,.12)' : 'rgba(148,163,184,.1)',
+                      color:      am.status === 'active' ? '#34d399'              : 'rgba(148,163,184,.4)',
+                      border: `0.5px solid ${am.status === 'active' ? 'rgba(52,211,153,.25)' : 'rgba(148,163,184,.2)'}`,
                     }}>
-                      Active
+                      {am.status === 'active' ? 'Active' : 'Inactive'}
                     </span>
                   </td>
                   <td style={{ textAlign: 'right' }}>
                     <button
-                      onClick={() => setConfirmId(am.id)}
+                      onClick={() => setConfirmUser(am)}
+                      title={am.status === 'active' ? 'Deactivate account' : 'Activate account'}
                       style={{
                         width: 30, height: 30, borderRadius: 7, border: 'none',
-                        background: 'rgba(255,255,255,.04)', cursor: 'pointer',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        color: 'rgba(148,163,184,.4)', transition: 'all .2s', marginLeft: 'auto',
-                      }}
-                      onMouseEnter={e => { const b = e.currentTarget as HTMLButtonElement; b.style.background = 'rgba(248,113,113,.12)'; b.style.color = '#f87171'; }}
-                      onMouseLeave={e => { const b = e.currentTarget as HTMLButtonElement; b.style.background = 'rgba(255,255,255,.04)'; b.style.color = 'rgba(148,163,184,.4)'; }}
-                    >
-                      <Trash2 size={13} aria-hidden />
+                        background: am.status === 'active' ? 'rgba(248,113,113,.08)' : 'rgba(52,211,153,.08)',
+                        cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        color: am.status === 'active' ? '#f87171' : '#34d399', marginLeft: 'auto',
+                      }}>
+                      {am.status === 'active' ? <ToggleRight size={15} /> : <ToggleLeft size={15} />}
                     </button>
                   </td>
                 </tr>
@@ -94,12 +94,16 @@ export function AMTable({ managers, onDelete, isDeleting }: Props) {
       </div>
 
       <ConfirmDialog
-        open={!!confirmId}
-        title="Delete Account Manager"
-        description="This will permanently delete the account manager. This action cannot be undone."
-        onConfirm={() => { if (confirmId) onDelete(confirmId); setConfirmId(null); }}
-        onCancel={() => setConfirmId(null)}
-        loading={isDeleting}
+        open={!!confirmUser}
+        title={confirmUser?.status === 'active' ? 'Deactivate Account' : 'Activate Account'}
+        description={confirmUser?.status === 'active'
+          ? `${confirmUser?.full_name} will not be able to log in. Their data will be preserved.`
+          : `${confirmUser?.full_name} will be able to log in again.`}
+        confirmLabel={confirmUser?.status === 'active' ? 'Deactivate' : 'Activate'}
+        confirmColor={confirmUser?.status === 'active' ? 'linear-gradient(135deg,#dc2626,#ef4444)' : 'linear-gradient(135deg,#059669,#10b981)'}
+        onConfirm={() => { if (confirmUser) onToggle(confirmUser.id, confirmUser.status ?? 'active'); setConfirmUser(null); }}
+        onCancel={() => setConfirmUser(null)}
+        loading={isToggling}
       />
     </>
   );

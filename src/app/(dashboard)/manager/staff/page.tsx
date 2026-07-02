@@ -1,9 +1,9 @@
 'use client';
 import { useState }                              from 'react';
 import { useQuery, useQueryClient }              from '@tanstack/react-query';
-import { UserPlus, Mail, Trash2, Pencil, Users, Crown, UserCheck, Shield } from 'lucide-react';
+import { UserPlus, Mail, ToggleLeft, ToggleRight, Pencil, Users, Crown, UserCheck, Shield } from 'lucide-react';
 import { formatTime }                            from '@/lib/utils';
-import { createUserAction, deleteUserAction, updateUserAction } from '@/lib/auth';
+import { createUserAction, toggleUserStatusAction, updateUserAction } from '@/lib/auth';
 import { toast }                                 from 'sonner';
 import { ConfirmDialog }                         from '@/components/shared/ConfirmDialog';
 
@@ -25,7 +25,7 @@ export default function StaffPage() {
   const [showModal,  setShowModal]  = useState(false);
   const [editUser,   setEditUser]   = useState<any>(null);
   const [confirmId,  setConfirmId]  = useState<string|null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
+  const [isToggling, setIsToggling] = useState(false);
   const [loading,    setLoading]    = useState(false);
   const [form,  setForm]  = useState({ full_name:'', email:'', password:'', role:'sales_team', team_id:'' });
   const [eForm, setEForm] = useState({ full_name:'', role:'', team_id:'', new_password:'' });
@@ -74,12 +74,12 @@ export default function StaffPage() {
     setEditUser(null);
   };
 
-  const handleDelete = async (id: string) => {
-    setIsDeleting(true);
-    const result = await deleteUserAction(id);
+  const handleToggle = async (id: string, currentStatus: string) => {
+    setIsToggling(true);
+    const result = await toggleUserStatusAction(id, currentStatus);
     if (result?.error) toast.error(result.error);
-    else { toast.success('Removed'); qc.invalidateQueries({ queryKey: ['staff'] }); }
-    setIsDeleting(false);
+    else { toast.success(currentStatus === 'active' ? 'Account deactivated' : 'Account activated'); qc.invalidateQueries({ queryKey: ['staff'] }); }
+    setIsToggling(false);
     setConfirmId(null);
   };
 
@@ -179,8 +179,9 @@ export default function StaffPage() {
                             <Pencil size={13}/>
                           </button>
                           <button onClick={() => setConfirmId(m.id)}
-                            style={{ width:30, height:30, borderRadius:7, border:'none', background:'rgba(255,255,255,.04)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'rgba(148,163,184,.4)' }}>
-                            <Trash2 size={13}/>
+                            title={m.status==='active'?'Deactivate':'Activate'}
+                            style={{ width:30, height:30, borderRadius:7, border:'none', background:m.status==='active'?'rgba(248,113,113,.08)':'rgba(52,211,153,.08)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:m.status==='active'?'#f87171':'#34d399' }}>
+                            {m.status==='active' ? <ToggleRight size={15}/> : <ToggleLeft size={15}/>}
                           </button>
                         </div>
                       </td>
@@ -254,11 +255,12 @@ export default function StaffPage() {
 
       <ConfirmDialog
         open={!!confirmId}
-        title="Remove Staff Member"
-        description="This will permanently delete this user and all their data."
-        onConfirm={() => confirmId && handleDelete(confirmId)}
+      title="Deactivate / Activate Staff"
+        description="Deactivating will block login but preserve all data."
+        confirmLabel="Confirm"
+        onConfirm={() => { if (confirmId) { const m = staff.find((x:any)=>x.id===confirmId); handleToggle(confirmId, m?.status??'active'); } }}
         onCancel={() => setConfirmId(null)}
-        loading={isDeleting}
+        loading={isToggling}
       />
     </div>
   );

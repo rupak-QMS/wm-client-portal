@@ -33,9 +33,9 @@ export async function loginAction(email: string, password: string) {
 
   const profile = await prisma.user.findUnique({ where: { id: user.id } });
 
-  if ((profile as any)?.status === 'pending') {
+  if ((profile as any)?.status === 'pending' || (profile as any)?.status === 'inactive') {
     await supabase.auth.signOut();
-    return { error: 'Your account is pending manager approval. Please wait before logging in.' };
+    return { error: (profile as any)?.status === 'inactive' ? 'Your account has been deactivated. Please contact your manager.' : 'Your account is pending manager approval. Please wait before logging in.' };
   }
 
   const dashPath =
@@ -206,4 +206,32 @@ export async function deleteUserAction(userId: string) {
   revalidatePath('/manager/account-managers');
   revalidatePath('/manager/sales-team');
   return { success: true };
+}
+
+export async function toggleUserStatusAction(userId: string, currentStatus: string) {
+  const me = await getCurrentUser();
+  if (me?.role !== 'manager') return { error: 'Unauthorized' };
+
+  const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
+
+  try {
+    // Block/unblock in Supabase Auth
+    const adminClient = getAdminClient();
+    await adminClient.auth.admin.updateUserById(userId, {
+      ban_duration: newStatus === 'inactive' ? '876600h' : 'none',
+    });
+
+    // Update status in DB
+    await prisma.user.update({
+      where: { id: userId },
+      data:  { status: newStatus },
+    });
+  } catch (err: any) {
+    return { error: err?.message ?? 'Failed to update user status' };
+  }
+
+  revalidatePath('/manager/account-managers');
+  revalidatePath('/manager/sales-team');
+  revalidatePath('/manager/staff');
+  return { success: true, newStatus };
 }

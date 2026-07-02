@@ -15,6 +15,9 @@ export interface User {
   email: string;
   role: UserRole;
   avatar_url?: string | null;
+  status?: string;
+  team_id?: string | null;
+  team?: { id: string; name: string } | null;
   created_at: string;
   updated_at: string;
 }
