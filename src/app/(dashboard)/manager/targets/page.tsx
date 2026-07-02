@@ -1,5 +1,5 @@
 'use client';
-import { useState }                              from 'react';
+import { useState, useEffect, useCallback }      from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Target, Plus, Pencil, ChevronLeft, ChevronRight,
@@ -12,6 +12,68 @@ const MONTHS     = ['January','February','March','April','May','June','July','Au
 const CURRENCIES = ['USD','GBP','EUR','AUD','INR','SGD'];
 const NOW        = new Date();
 
+function daysInMonth(month: number, year: number) { return new Date(year, month, 0).getDate(); }
+
+/** Small hand-rolled SVG donut — same one used on the AM/TL/Sales target pages. */
+function DonutChart({ segments, centerLabel, centerValue }: {
+  segments: { value: number; color: string }[];
+  centerLabel: string;
+  centerValue: string;
+}) {
+  const total = segments.reduce((s, x) => s + x.value, 0) || 1;
+  const radius = 62;
+  const circumference = 2 * Math.PI * radius;
+  let offset = 0;
+  return (
+    <div style={{ position:'relative', width:160, height:160, flexShrink:0 }}>
+      <svg width={160} height={160} viewBox="0 0 160 160" style={{ transform:'rotate(-90deg)' }}>
+        <circle cx={80} cy={80} r={radius} fill="none" stroke="rgba(148,163,184,.12)" strokeWidth={20} />
+        {segments.map((seg, i) => {
+          const frac = seg.value / total;
+          const dash = frac * circumference;
+          const circle = (
+            <circle key={i} cx={80} cy={80} r={radius} fill="none" stroke={seg.color} strokeWidth={20}
+              strokeDasharray={`${dash} ${circumference - dash}`} strokeDashoffset={-offset} strokeLinecap="butt" />
+          );
+          offset += dash;
+          return circle;
+        })}
+      </svg>
+      <div style={{ position:'absolute', inset:0, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center' }}>
+        <div style={{ fontSize:'1.05rem', fontWeight:800, color:'#f1f5f9', textAlign:'center' }}>{centerValue}</div>
+        <div style={{ fontSize:'.68rem', color:'rgba(148,163,184,.5)' }}>{centerLabel}</div>
+      </div>
+    </div>
+  );
+}
+
+/** Reusable "About This Period" panel — same pattern as the other three dashboards. */
+function PeriodPanel({ month, year, role }: { month: number; year: number; role: string }) {
+  const totalDays = daysInMonth(month, year);
+  const daysPassed = (year === NOW.getFullYear() && month === NOW.getMonth() + 1)
+    ? Math.min(NOW.getDate(), totalDays)
+    : (year < NOW.getFullYear() || (year === NOW.getFullYear() && month < NOW.getMonth() + 1)) ? totalDays : 0;
+  const daysRemaining = Math.max(totalDays - daysPassed, 0);
+  return (
+    <div className="wm-card" style={{ padding:'20px 22px' }}>
+      <div style={{ fontWeight:700, color:'#f1f5f9', marginBottom:16, fontSize:'.95rem' }}>About This Period</div>
+      <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+        {[
+          ['Period', `1 ${MONTHS[month-1]} ${year} – ${totalDays} ${MONTHS[month-1]} ${year}`],
+          ['Your Role', role],
+          ['Total Working Days', String(totalDays)],
+          ['Days Passed', String(daysPassed)],
+          ['Days Remaining', String(daysRemaining)],
+        ].map(([k, v]) => (
+          <div key={k} style={{ display:'flex', justifyContent:'space-between', fontSize:'.85rem', paddingBottom:10, borderBottom:'1px solid rgba(124,58,237,.08)' }}>
+            <span style={{ color:'rgba(148,163,184,.5)' }}>{k}</span>
+            <span style={{ color:'#f1f5f9', fontWeight:600 }}>{v}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 const inp: React.CSSProperties = { width:'100%', height:40, background:'rgba(255,255,255,.04)', border:'1px solid rgba(124,58,237,.18)', borderRadius:9, padding:'0 12px', fontSize:'.85rem', color:'#f1f5f9', outline:'none' };
 const sel: React.CSSProperties = { ...inp, cursor:'pointer' };
@@ -19,10 +81,12 @@ const lbl: React.CSSProperties = { fontSize:'.75rem', color:'rgba(148,163,184,.5
 
 export default function TargetsPage() {
   const qc = useQueryClient();
-  const [tab,   setTab]   = useState<'am' | 'sales'>('am');
+  const [tab,   setTab]   = useState<'am' | 'sales' | 'history'>('am');
   const [month, setMonth] = useState(NOW.getMonth() + 1);
   const [year,  setYear]  = useState(NOW.getFullYear());
   const [salesTeam, setSalesTeam] = useState<string>('');
+  const [history, setHistory] = useState<{ label: string; amTarget: number; amAchieved: number }[] | null>(null);
+  const [historyLoading, setHistoryLoading] = useState(false);
 
   const { data: teams = [] } = useQuery<any[]>({ queryKey: ['teams'], queryFn: async () => (await fetch('/api/teams')).json().then((r) => r.data ?? []) });
 
@@ -136,6 +200,38 @@ export default function TargetsPage() {
 
   const pctColor = (p:number) => p>=100?'#34d399':p>=60?'#60a5fa':p>=30?'#fbbf24':'#f87171';
 
+  // Lightweight 6-month history for the Account Managers total, reusing the
+  // same revenue-targets + upsells endpoints already used above.
+  const loadHistory = useCallback(async () => {
+    setHistoryLoading(true);
+    try {
+      const points: { label: string; amTarget: number; amAchieved: number }[] = [];
+      let m = month, y = year;
+      for (let i = 0; i < 6; i++) {
+        const [targetsRes, upsellsRes] = await Promise.all([
+          fetch(`/api/revenue-targets?month=${m}&year=${y}`),
+          fetch(`/api/upsells?month=${m}&year=${y}`),
+        ]);
+        const targets = targetsRes.ok ? (await targetsRes.json()).data ?? [] : [];
+        const ups = upsellsRes.ok ? (await upsellsRes.json()).data ?? [] : [];
+        const target = targets.reduce((s: number, t: any) => s + parseFloat(t.target_amount || 0), 0);
+        const achieved = ups.reduce((s: number, u: any) => s + parseFloat(u.upfront_amount || 0), 0);
+        points.unshift({ label: `${MONTHS[m - 1].slice(0, 3)} ${y}`, amTarget: target, amAchieved: achieved });
+        m -= 1;
+        if (m === 0) { m = 12; y -= 1; }
+      }
+      setHistory(points);
+    } catch {
+      setHistory(null);
+    } finally {
+      setHistoryLoading(false);
+    }
+  }, [month, year]);
+
+  useEffect(() => {
+    if (tab === 'history' && !history) loadHistory();
+  }, [tab, history, loadHistory]);
+
   return (
     <div className="wm-page-inner">
 
@@ -170,7 +266,7 @@ export default function TargetsPage() {
 
       {/* ── Tabs ── */}
       <div style={{display:'flex',gap:6,marginBottom:22,borderBottom:'1px solid rgba(255,255,255,.06)'}}>
-        {([{key:'am',label:'Account Managers'},{key:'sales',label:'Sales Teams'}] as const).map(t=>(
+        {([{key:'am',label:'Account Managers'},{key:'sales',label:'Sales Teams'},{key:'history',label:'History'}] as const).map(t=>(
           <button key={t.key} onClick={()=>setTab(t.key)}
             style={{padding:'8px 18px',fontSize:'.85rem',fontWeight:600,border:'none',background:'none',cursor:'pointer',color:tab===t.key?'#f1f5f9':'rgba(148,163,184,.4)',borderBottom:tab===t.key?'2px solid #a78bfa':'2px solid transparent',marginBottom:-1,transition:'all .2s'}}>
             {t.label}
@@ -197,6 +293,40 @@ export default function TargetsPage() {
               <p style={{fontSize:'.72rem',color:'rgba(148,163,184,.4)'}}>{sub}</p>
             </div>
           ))}
+        </div>
+
+        {/* Target overview donut + period info */}
+        <div style={{ display:'grid', gridTemplateColumns:'minmax(280px,1fr) minmax(240px,1fr)', gap:16, marginBottom:20 }} className="wm-fade-up-2">
+          <div className="wm-card" style={{ padding:'20px 22px' }}>
+            <div style={{ fontWeight:700, color:'#f1f5f9', marginBottom:16, fontSize:'.95rem' }}>Target Overview</div>
+            <div style={{ display:'flex', alignItems:'center', gap:22, flexWrap:'wrap' }}>
+              <DonutChart
+                centerLabel="Total"
+                centerValue={amTotalTarget>0?`$${amTotalTarget.toLocaleString()}`:'—'}
+                segments={[
+                  { value: amTotalAchieved, color: '#34d399' },
+                  { value: amTotalLeft, color: 'rgba(148,163,184,.18)' },
+                ]}
+              />
+              <div style={{ display:'flex', flexDirection:'column', gap:10, flex:1, minWidth:140 }}>
+                <div style={{ display:'flex', alignItems:'flex-start', gap:8 }}>
+                  <div style={{ width:9, height:9, borderRadius:'50%', background:'#34d399', marginTop:4, flexShrink:0 }} />
+                  <div>
+                    <div style={{ fontSize:'.82rem', color:'#f1f5f9', fontWeight:600 }}>Achieved</div>
+                    <div style={{ fontSize:'.78rem', color:'rgba(148,163,184,.5)' }}>${amTotalAchieved.toLocaleString()} ({amTeamPct.toFixed(0)}%)</div>
+                  </div>
+                </div>
+                <div style={{ display:'flex', alignItems:'flex-start', gap:8 }}>
+                  <div style={{ width:9, height:9, borderRadius:'50%', background:'rgba(148,163,184,.4)', marginTop:4, flexShrink:0 }} />
+                  <div>
+                    <div style={{ fontSize:'.82rem', color:'#f1f5f9', fontWeight:600 }}>Left</div>
+                    <div style={{ fontSize:'.78rem', color:'rgba(148,163,184,.5)' }}>${amTotalLeft.toLocaleString()} ({(100-amTeamPct).toFixed(0)}%)</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <PeriodPanel month={month} year={year} role="Manager" />
         </div>
 
         {/* Top performer */}
@@ -327,6 +457,40 @@ export default function TargetsPage() {
           ))}
         </div>
 
+        {/* Target overview donut + period info */}
+        <div style={{ display:'grid', gridTemplateColumns:'minmax(280px,1fr) minmax(240px,1fr)', gap:16, marginBottom:20 }} className="wm-fade-up-2">
+          <div className="wm-card" style={{ padding:'20px 22px' }}>
+            <div style={{ fontWeight:700, color:'#f1f5f9', marginBottom:16, fontSize:'.95rem' }}>Target Overview</div>
+            <div style={{ display:'flex', alignItems:'center', gap:22, flexWrap:'wrap' }}>
+              <DonutChart
+                centerLabel="Total"
+                centerValue={salesTotalTarget>0?`$${salesTotalTarget.toLocaleString()}`:'—'}
+                segments={[
+                  { value: salesTotalAchieved, color: '#f472b6' },
+                  { value: salesTotalLeft, color: 'rgba(148,163,184,.18)' },
+                ]}
+              />
+              <div style={{ display:'flex', flexDirection:'column', gap:10, flex:1, minWidth:140 }}>
+                <div style={{ display:'flex', alignItems:'flex-start', gap:8 }}>
+                  <div style={{ width:9, height:9, borderRadius:'50%', background:'#f472b6', marginTop:4, flexShrink:0 }} />
+                  <div>
+                    <div style={{ fontSize:'.82rem', color:'#f1f5f9', fontWeight:600 }}>Collected</div>
+                    <div style={{ fontSize:'.78rem', color:'rgba(148,163,184,.5)' }}>${salesTotalAchieved.toLocaleString()} ({salesTeamPct.toFixed(0)}%)</div>
+                  </div>
+                </div>
+                <div style={{ display:'flex', alignItems:'flex-start', gap:8 }}>
+                  <div style={{ width:9, height:9, borderRadius:'50%', background:'rgba(148,163,184,.4)', marginTop:4, flexShrink:0 }} />
+                  <div>
+                    <div style={{ fontSize:'.82rem', color:'#f1f5f9', fontWeight:600 }}>Left</div>
+                    <div style={{ fontSize:'.78rem', color:'rgba(148,163,184,.5)' }}>${salesTotalLeft.toLocaleString()} ({(100-salesTeamPct).toFixed(0)}%)</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <PeriodPanel month={month} year={year} role="Manager" />
+        </div>
+
         {/* Top performer */}
         {salesTop && salesTop.achieved>0 && (
           <div style={{marginBottom:20,padding:'14px 20px',borderRadius:14,background:'linear-gradient(135deg,rgba(244,114,182,.08),rgba(124,58,237,.08))',border:'1px solid rgba(244,114,182,.2)',display:'flex',alignItems:'center',gap:14}}>
@@ -423,6 +587,36 @@ export default function TargetsPage() {
           )}
         </div>
       </>)}
+
+      {/* ══════════ HISTORY TAB ══════════ */}
+      {tab==='history' && (
+        <div className="wm-card wm-fade-up" style={{ padding:'22px 24px' }}>
+          <div style={{ fontWeight:700, color:'#f1f5f9', marginBottom:4, fontSize:'.95rem' }}>Target History — Account Managers</div>
+          <div style={{ fontSize:'.78rem', color:'rgba(148,163,184,.45)', marginBottom:18 }}>Last 6 months, total AM target vs. total achieved.</div>
+          {historyLoading ? (
+            <div style={{ padding:30, textAlign:'center', color:'rgba(148,163,184,.4)' }}>Loading…</div>
+          ) : !history || history.length===0 ? (
+            <div style={{ padding:30, textAlign:'center', color:'rgba(148,163,184,.4)', fontSize:'.85rem' }}>No history available.</div>
+          ) : (
+            <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+              {history.map((h) => {
+                const pct = h.amTarget>0 ? Math.min(100, Math.round((h.amAchieved/h.amTarget)*100)) : 0;
+                return (
+                  <div key={h.label}>
+                    <div style={{ display:'flex', justifyContent:'space-between', fontSize:'.82rem', marginBottom:5 }}>
+                      <span style={{ color:'#f1f5f9', fontWeight:600 }}>{h.label}</span>
+                      <span style={{ color:'rgba(148,163,184,.5)' }}>${h.amAchieved.toLocaleString()} / ${h.amTarget.toLocaleString()}</span>
+                    </div>
+                    <div style={{ height:8, background:'rgba(255,255,255,.08)', borderRadius:99 }}>
+                      <div style={{ height:'100%', width:`${pct}%`, background:'linear-gradient(90deg,#7c3aed,#3b82f6)', borderRadius:99 }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Info note */}
       <div style={{marginTop:16,padding:'12px 16px',borderRadius:10,background:'rgba(96,165,250,.06)',border:'0.5px solid rgba(96,165,250,.15)',display:'flex',alignItems:'center',gap:10}}>
