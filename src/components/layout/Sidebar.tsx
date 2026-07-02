@@ -27,6 +27,7 @@ const managerNav: NavItem[] = [
 const accountManagerNav: NavItem[] = [
   { label: 'Dashboard', href: '/account/dashboard', icon: LayoutDashboard },
   { label: 'Clients',   href: '/account/clients',   icon: Users },
+  { label: 'Targets',   href: '/account/targets',   icon: Target },
   { label: 'Reports',   href: '/account/reports',   icon: FileText },
   { label: 'Upsells',   href: '/account/upsells',   icon: TrendingUp },
   { label: 'Chat',      href: '/account/chat',      icon: MessageSquare },

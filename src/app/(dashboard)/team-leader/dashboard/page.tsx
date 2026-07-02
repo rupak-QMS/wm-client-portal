@@ -20,6 +20,7 @@ export default function TeamLeaderDashboard() {
     queryFn:  async () => (await fetch('/api/users/me')).json().then((r:any) => r.data),
   });
 
+  // Per-agent allocation breakdown (used for the leaderboard below)
   const { data: tlData } = useQuery<any>({
     queryKey: ['tl-allocations', me?.id, month, year],
     enabled:  !!me?.id,
@@ -29,12 +30,14 @@ export default function TeamLeaderDashboard() {
     },
   });
 
-  const { data: myTargets = [] } = useQuery<any[]>({
-    queryKey: ['tl-targets', me?.id, month, year],
-    enabled:  !!me?.id,
-    queryFn:  async () => (await fetch(`/api/manager/team-leader-targets?month=${month}&year=${year}`)).json().then((r:any) =>
-      (r.data ?? []).filter((t:any) => t.team_leader_id === me?.id)
-    ),
+  // TL's own target — sourced from the Account Manager's allocation
+  // (replaces the old /api/manager/team-leader-targets flow)
+  const { data: tlTarget } = useQuery<any>({
+    queryKey: ['tl-target', month, year],
+    queryFn:  async () => {
+      const res = await fetch(`/api/team-leader/target?month=${month}&year=${year}`);
+      return res.json();
+    },
   });
 
   const active  = agents.filter((a:any) => a.status === 'active');
@@ -42,10 +45,11 @@ export default function TeamLeaderDashboard() {
   const teamName = me?.team?.name ?? 'My Team';
   const teamAchieved = active.reduce((s:number, a:any) => s + (a.achieved ?? 0), 0);
 
-  const totalAssigned  = myTargets.reduce((s:number, t:any) => s + Number(t.target_amount), 0);
-  const totalAllocated = tlData?.allocated ?? 0;
-  const totalRemaining = totalAssigned - totalAllocated;
+  const totalAssigned  = tlTarget?.assigned_target ?? 0;
+  const totalAllocated = tlTarget?.allocated_to_team ?? 0;
+  const totalRemaining = tlTarget?.remaining_to_allocate ?? 0;
   const allocationPct  = totalAssigned > 0 ? Math.min((totalAllocated / totalAssigned) * 100, 100) : 0;
+  const fromAM          = tlTarget?.from_account_manager;
 
   const prevMonth = () => { if (month===1){setMonth(12);setYear(y=>y-1);}else setMonth(m=>m-1); };
   const nextMonth = () => { if (month===12){setMonth(1);setYear(y=>y+1);}else setMonth(m=>m+1); };
@@ -98,15 +102,11 @@ export default function TeamLeaderDashboard() {
             <span>Allocated: ${totalAllocated.toLocaleString()}</span>
             <span>Remaining: ${Math.max(totalRemaining,0).toLocaleString()}</span>
           </div>
-          {/* Per-team targets */}
-          {myTargets.length > 0 && (
-            <div style={{ marginTop:16, display:'flex', flexDirection:'column', gap:8 }}>
-              {myTargets.map((t:any) => (
-                <div key={t.id} style={{ display:'flex', justifyContent:'space-between', fontSize:'.8rem', padding:'8px 12px', background:'rgba(124,58,237,.06)', borderRadius:8 }}>
-                  <span style={{ color:'rgba(148,163,184,.7)' }}>{t.team?.name}</span>
-                  <span style={{ color:'#a78bfa', fontWeight:600 }}>${Number(t.target_amount).toLocaleString()} {t.currency}</span>
-                </div>
-              ))}
+          {/* Source of this target */}
+          {fromAM?.full_name && (
+            <div style={{ marginTop:16, display:'flex', alignItems:'center', gap:8, fontSize:'.8rem', padding:'8px 12px', background:'rgba(124,58,237,.06)', borderRadius:8 }}>
+              <span style={{ color:'rgba(148,163,184,.7)' }}>Target assigned by:</span>
+              <span style={{ color:'#a78bfa', fontWeight:600 }}>{fromAM.full_name}</span>
             </div>
           )}
         </div>
