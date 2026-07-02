@@ -39,6 +39,11 @@ export default function SalesTeamPage() {
   const [targetForm,   setTargetForm]   = useState({ team_id:'', month: now.getMonth()+1, year: now.getFullYear(), target_amount:'', currency:'USD' });
   const [targetSaving, setTargetSaving] = useState(false);
 
+  const { data: currentUser } = useQuery<any>({
+    queryKey: ['me'],
+    queryFn:  async () => (await fetch('/api/users/me')).json().then((r:any) => r.data),
+  });
+
   const { data: teams = [] } = useQuery<any[]>({
     queryKey: ['teams'],
     queryFn:  async () => (await fetch('/api/teams')).json().then((r:any) => r.data ?? []),
@@ -109,14 +114,15 @@ export default function SalesTeamPage() {
 
   const openTarget = async (tl: any) => {
     setTargetModal(tl);
-    setTargetForm({ team_id:'', month: now.getMonth()+1, year: now.getFullYear(), target_amount:'', currency:'USD' });
+    // Prefill team from TL's assigned team
+    const defaultTeamId = tl.team_id ?? '';
+    setTargetForm({ team_id: defaultTeamId, month: now.getMonth()+1, year: now.getFullYear(), target_amount:'', currency:'USD' });
   };
 
   const saveTarget = async () => {
     if (!targetForm.team_id)      return toast.error('Select a team');
     if (!targetForm.target_amount) return toast.error('Enter a target amount');
     setTargetSaving(true);
-    const me   = await fetch('/api/users/me').then(r => r.json()).catch(() => null);
     const res  = await fetch('/api/manager/team-leader-targets', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -127,7 +133,7 @@ export default function SalesTeamPage() {
         year:           targetForm.year,
         target_amount:  parseFloat(targetForm.target_amount),
         currency:       targetForm.currency,
-        created_by:     me?.data?.id,
+        created_by:     currentUser?.id,
       }),
     });
     const json = await res.json();
