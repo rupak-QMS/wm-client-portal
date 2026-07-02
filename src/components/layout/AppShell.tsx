@@ -29,6 +29,7 @@ const NAV_MANAGER = [
 const NAV_ACCOUNT = [
   { href: '/account/dashboard', icon: LayoutDashboard, label: 'Dashboard'  },
   { href: '/account/clients',   icon: Users,           label: 'My Clients' },
+  { href: '/account/targets',   icon: Target,          label: 'Targets'    },
   { href: '/account/reports',   icon: FileText,        label: 'Reports'    },
   { href: '/account/upsells',   icon: TrendingUp,      label: 'Upsells'    },
   { href: '/account/chat',      icon: MessageSquare,   label: 'Chat'       },
