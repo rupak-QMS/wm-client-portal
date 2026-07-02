@@ -78,30 +78,41 @@ export default function TargetsPage() {
   const amTeamPct       = amTotalTarget>0 ? Math.min((amTotalAchieved/amTotalTarget)*100,100) : 0;
   const amTop           = amRows.length>0 ? amRows.reduce((b:any,r:any)=>r.achieved>(b?.achieved??0)?r:b,null) : null;
 
-  // ── Sales queries ──
-  const { data: salesMembers=[], isLoading: membersLoading } = useQuery({
-    queryKey: ['sales-members', salesTeam],
-    queryFn:  async () => (await (await fetch(`/api/sales-members?team=${salesTeam}`)).json()).data ?? [],
+  // ── TL targets queries ──
+  const { data: tlTargets=[], isLoading: tlLoading } = useQuery({
+    queryKey: ['tl-targets', month, year, salesTeam],
+    queryFn:  async () => {
+      const url = salesTeam
+        ? `/api/manager/team-leader-targets?month=${month}&year=${year}&team_id=${salesTeam}`
+        : `/api/manager/team-leader-targets?month=${month}&year=${year}`;
+      return (await (await fetch(url)).json()).data ?? [];
+    },
   });
-  const { data: salesTargets=[], isLoading: salesLoading } = useQuery({
-    queryKey: ['sales-targets', month, year, salesTeam],
-    queryFn:  async () => (await (await fetch(`/api/sales-targets?month=${month}&year=${year}`)).json()).data ?? [],
+  const { data: tlLeaders=[] } = useQuery<any[]>({
+    queryKey: ['team-leaders'],
+    queryFn:  async () => (await fetch('/api/sales-members?role=team_leader')).json().then((r:any) => r.data ?? []),
   });
 
-  // Merge sales targets with achieved from sales-members API
-  const salesRows = salesMembers.map((m:any) => {
-    const target = salesTargets.find((t:any)=>t.sales_member_id===m.id);
-    const targetRevenue = parseFloat(target?.target_revenue||0);
-    const achieved      = m.achieved??0;
-    const left          = Math.max(targetRevenue-achieved,0);
-    const pct           = targetRevenue>0 ? Math.min((achieved/targetRevenue)*100,100) : 0;
-    return { ...m, target, targetRevenue, achieved, left, pct };
+  const { data: currentUser } = useQuery<any>({
+    queryKey: ['me'],
+    queryFn: async () => (await fetch('/api/users/me')).json().then((r:any) => r.data),
   });
-  const salesTotalTarget   = salesRows.reduce((s:number,r:any)=>s+r.targetRevenue,0);
-  const salesTotalAchieved = salesRows.reduce((s:number,r:any)=>s+r.achieved,0);
+
+  const tlRows = tlTargets.map((t:any) => {
+    const target   = parseFloat(t.target_amount||0);
+    const achieved = 0; // TODO: sum from allocations achieved
+    const left     = Math.max(target-achieved,0);
+    const pct      = target>0 ? Math.min((achieved/target)*100,100) : 0;
+    return { ...t, target, achieved, left, pct };
+  });
+  const salesTotalTarget   = tlRows.reduce((s:number,r:any)=>s+r.target,0);
+  const salesTotalAchieved = tlRows.reduce((s:number,r:any)=>s+r.achieved,0);
   const salesTotalLeft     = Math.max(salesTotalTarget-salesTotalAchieved,0);
   const salesTeamPct       = salesTotalTarget>0 ? Math.min((salesTotalAchieved/salesTotalTarget)*100,100) : 0;
-  const salesTop           = salesRows.length>0 ? salesRows.reduce((b:any,r:any)=>r.achieved>(b?.achieved??0)?r:b,null) : null;
+  const salesTop           = tlRows.length>0 ? tlRows.reduce((b:any,r:any)=>r.target>(b?.target||0)?r:b,null) : null;
+  const salesMembers       = tlRows; // alias for JSX compatibility
+  const membersLoading     = tlLoading;
+  const salesLoading       = tlLoading;
 
   // ── AM mutations ──
   const amMutation = useMutation({
@@ -337,7 +348,7 @@ export default function TargetsPage() {
             <p style={{fontSize:'.75rem',color:'rgba(148,163,184,.4)'}}>Targets reset on the 1st of every month</p>
           </div>
           {(salesLoading||membersLoading) ? <div style={{textAlign:'center',padding:40,color:'rgba(148,163,184,.3)'}}>Loading...</div>
-          : salesRows.length===0 ? (
+          : tlRows.length===0 ? (
             <div style={{textAlign:'center',padding:'60px 24px'}}>
               <Target size={36} style={{color:'rgba(148,163,184,.15)',margin:'0 auto 12px',display:'block'}}/>
               <p style={{color:'rgba(148,163,184,.4)',fontSize:'.9rem'}}>No members in this team yet</p>
@@ -347,7 +358,7 @@ export default function TargetsPage() {
               <table className="wm-table">
                 <thead><tr><th>#</th><th>Sales Agent</th><th style={{textAlign:'right'}}>Target</th><th style={{textAlign:'right'}}>Collected</th><th style={{textAlign:'right'}}>Left</th><th style={{minWidth:160}}>Achievement</th><th style={{textAlign:'right'}}>Action</th></tr></thead>
                 <tbody>
-                  {salesRows.map((r:any,i:number)=>{
+                  {tlRows.map((r:any,i:number)=>{
                     const isTop=salesTop&&r.id===salesTop.id&&r.achieved>0;
                     const pc=pctColor(r.pct);
                     return (
@@ -389,7 +400,7 @@ export default function TargetsPage() {
                       </tr>
                     );
                   })}
-                  {salesRows.length>0&&(
+                  {tlRows.length>0&&(
                     <tr style={{borderTop:'2px solid rgba(124,58,237,.15)',background:'rgba(124,58,237,.04)'}}>
                       <td colSpan={2} style={{fontWeight:700,color:'#f1f5f9',fontSize:'.88rem'}}>Total</td>
                       <td style={{textAlign:'right',fontWeight:700,color:'#f1f5f9'}}>${salesTotalTarget.toLocaleString()}</td>
