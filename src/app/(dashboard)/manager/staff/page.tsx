@@ -17,6 +17,11 @@ const inp: React.CSSProperties = { width:'100%', height:40, background:'rgba(255
 const sel: React.CSSProperties = { ...inp, cursor:'pointer' };
 const lbl: React.CSSProperties = { fontSize:'.75rem', color:'rgba(148,163,184,.55)', textTransform:'uppercase', letterSpacing:'.05em', display:'block', marginBottom:6 };
 
+const amSelSmall: React.CSSProperties = {
+  height: 30, background:'rgba(255,255,255,.04)', border:'1px solid rgba(96,165,250,.25)', borderRadius:7,
+  padding:'0 8px', fontSize:'.78rem', color:'#f1f5f9', outline:'none', cursor:'pointer',
+};
+
 type RoleFilter = 'all' | 'account_manager' | 'team_leader' | 'sales_team';
 
 export default function StaffPage() {
@@ -44,6 +49,35 @@ export default function StaffPage() {
       return (await fetch(url)).json().then((r:any) => r.data ?? []);
     },
   });
+
+  // Team Leader -> Account Manager assignments (new AM layer)
+  const { data: amAssignments = [] } = useQuery<any[]>({
+    queryKey: ['am-assignments'],
+    queryFn:  async () => (await fetch('/api/manager/assign-team-leader')).json(),
+  });
+
+  // Account Managers list, for the assignment dropdown
+  const { data: accountManagers = [] } = useQuery<any[]>({
+    queryKey: ['account-managers-list'],
+    queryFn:  async () => (await fetch('/api/staff?role=account_manager')).json().then((r:any) => r.data ?? []),
+  });
+
+  const getAssignedAmId = (teamLeaderId: string) => {
+    const found = amAssignments.find((t:any) => t.id === teamLeaderId);
+    return found?.assigned_account_manager_id ?? '';
+  };
+
+  const handleAssignAM = async (teamLeaderId: string, accountManagerId: string) => {
+    const res  = await fetch('/api/manager/assign-team-leader', {
+      method:  'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ team_leader_id: teamLeaderId, account_manager_id: accountManagerId }),
+    });
+    const json = await res.json();
+    if (!res.ok) { toast.error(json.error ?? 'Failed to assign Account Manager'); return; }
+    toast.success('Account Manager assigned');
+    qc.invalidateQueries({ queryKey: ['am-assignments'] });
+  };
 
   const handleCreate = async () => {
     if (!form.full_name || !form.email || !form.password || !form.role)
@@ -133,13 +167,13 @@ export default function StaffPage() {
             <table className="wm-table">
               <thead>
                 <tr>
-                  <th>Name</th><th>Email</th><th>Role</th><th>Team</th><th>Status</th><th>Joined</th>
+                  <th>Name</th><th>Email</th><th>Role</th><th>Team</th><th>Account Manager</th><th>Status</th><th>Joined</th>
                   <th style={{ textAlign:'right' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {staff.length === 0 && (
-                  <tr><td colSpan={7} style={{ textAlign:'center', padding:'40px', color:'rgba(148,163,184,.3)' }}>No staff found</td></tr>
+                  <tr><td colSpan={8} style={{ textAlign:'center', padding:'40px', color:'rgba(148,163,184,.3)' }}>No staff found</td></tr>
                 )}
                 {staff.map((m:any) => {
                   const roleInfo = ROLES.find(r => r.value === m.role);
@@ -164,6 +198,22 @@ export default function StaffPage() {
                         </span>
                       </td>
                       <td style={{ fontSize:'.82rem', color:'rgba(148,163,184,.5)' }}>{m.team?.name ?? '—'}</td>
+                      <td>
+                        {m.role === 'team_leader' ? (
+                          <select
+                            style={amSelSmall}
+                            value={getAssignedAmId(m.id)}
+                            onChange={e => handleAssignAM(m.id, e.target.value)}
+                          >
+                            <option value="">Unassigned</option>
+                            {accountManagers.map((am:any) => (
+                              <option key={am.id} value={am.id}>{am.full_name}</option>
+                            ))}
+                          </select>
+                        ) : (
+                          <span style={{ fontSize:'.82rem', color:'rgba(148,163,184,.35)' }}>—</span>
+                        )}
+                      </td>
                       <td>
                         <span style={{ padding:'3px 10px', borderRadius:99, fontSize:'.7rem', fontWeight:600,
                           background: m.status==='active' ? 'rgba(52,211,153,.12)' : 'rgba(251,191,36,.12)',

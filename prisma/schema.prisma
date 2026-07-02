@@ -148,8 +148,56 @@ model User {
   memberAllocations      TeamTargetAllocation[] @relation("MemberAllocations")
   allocationCreated      TeamTargetAllocation[] @relation("AllocationCreator")
   teamLeaderTeams        TeamLeaderTeam[]
+  assigned_account_manager_id String? @db.Uuid
+  assigned_account_manager    User?   @relation("AMToTL", fields: [assigned_account_manager_id], references: [id])
+  team_leaders                User[]  @relation("AMToTL")
 
+  amSelfTargets           AccountManagerSelfTarget[]
+  amAllocationsGiven      AccountManagerTeamLeaderTarget[] @relation("AMGivesTarget")
+  amAllocationsReceived   AccountManagerTeamLeaderTarget[] @relation("TLReceivesTarget")
   @@map("users")
+}
+
+//   assigned_account_manager_id   String?
+//   assigned_account_manager      User?    @relation("AMToTL", fields: [assigned_account_manager_id], references: [id])
+//   team_leaders                  User[]   @relation("AMToTL")
+//   amSelfTargets                 AccountManagerSelfTarget[]
+//   amAllocationsGiven            AccountManagerTeamLeaderTarget[] @relation("AMGivesTarget")
+//   amAllocationsReceived         AccountManagerTeamLeaderTarget[] @relation("TLReceivesTarget")
+
+model AccountManagerSelfTarget {
+  id                 String   @id @default(cuid())
+  account_manager_id String
+  month              Int
+  year               Int
+  allocated_amount   Float    @default(0)
+  achieved_amount    Float    @default(0)
+  created_at         DateTime @default(now())
+  updated_at         DateTime @updatedAt
+
+  account_manager User @relation(fields: [account_manager_id], references: [id])
+
+  @@unique([account_manager_id, month, year])
+  @@map("account_manager_self_targets")
+}
+
+model AccountManagerTeamLeaderTarget {
+  id                  String   @id @default(cuid())
+  account_manager_id  String
+  team_leader_id      String
+  month               Int
+  year                Int
+  allocated_amount    Float    @default(0)
+  achieved_amount     Float    @default(0)
+  created_by          String
+  created_at          DateTime @default(now())
+  updated_at          DateTime @updatedAt
+
+  account_manager User @relation("AMGivesTarget", fields: [account_manager_id], references: [id])
+  team_leader      User @relation("TLReceivesTarget", fields: [team_leader_id], references: [id])
+
+  @@unique([account_manager_id, team_leader_id, month, year])
+  @@map("account_manager_team_leader_targets")
 }
 
 model Client {

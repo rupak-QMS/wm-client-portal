@@ -34,11 +34,24 @@ export default function TeamLeaderAgentsPage() {
     queryFn:  async () => (await fetch('/api/users/me')).json().then((r:any) => r.data),
   });
 
-  const { data: allocData, refetch: refetchAlloc } = useQuery<any>({
+  // Existing per-member allocation records (for prefilling the modal input)
+  const { data: allocData } = useQuery<any>({
     queryKey: ['tl-allocations', me?.id, allocForm.month, allocForm.year],
     enabled:  !!me?.id && !!allocModal,
     queryFn:  async () => {
       const res = await fetch(`/api/team-leader/allocations?team_leader_id=${me.id}&month=${allocForm.month}&year=${allocForm.year}`);
+      return res.json();
+    },
+  });
+
+  // TL's own target — now sourced from the Account Manager's allocation,
+  // not the old TeamLeaderTarget flow. This is the real ceiling for
+  // "sum of allocations to agents" going forward.
+  const { data: tlTarget } = useQuery<any>({
+    queryKey: ['tl-target', allocForm.month, allocForm.year],
+    enabled:  !!allocModal,
+    queryFn:  async () => {
+      const res = await fetch(`/api/team-leader/target?month=${allocForm.month}&year=${allocForm.year}`);
       return res.json();
     },
   });
@@ -94,11 +107,17 @@ export default function TeamLeaderAgentsPage() {
     if (json.error) return toast.error(json.error);
     toast.success('Target allocated!');
     qc.invalidateQueries({ queryKey: ['tl-allocations'] });
+    qc.invalidateQueries({ queryKey: ['tl-target'] });
     setAllocModal(null);
   };
 
   const active  = agents.filter(a => a.status === 'active');
   const pending = agents.filter(a => a.status === 'pending');
+
+  const overAllocated =
+    !!tlTarget &&
+    !!allocForm.allocated_target &&
+    parseFloat(allocForm.allocated_target) > (tlTarget.remaining_to_allocate ?? 0);
 
   const AgentRow = ({ a }: { a: any }) => (
     <div style={{ padding:'14px 20px', borderBottom:'1px solid rgba(124,58,237,.07)', display:'flex', alignItems:'center', gap:14 }}>
@@ -193,12 +212,22 @@ export default function TeamLeaderAgentsPage() {
               <h2 style={{ fontSize:'1.1rem', fontWeight:700, color:'#f1f5f9', margin:0 }}>Allocate Target</h2>
             </div>
             <p style={{ fontSize:'.82rem', color:'rgba(148,163,184,.5)', marginBottom:20 }}>{allocModal.full_name}</p>
-            {allocData && (
-              <div style={{ marginBottom:16, padding:'10px 14px', background:'rgba(167,139,250,.06)', border:'1px solid rgba(167,139,250,.15)', borderRadius:9, fontSize:'.8rem' }}>
-                <span style={{ color:'rgba(148,163,184,.5)' }}>Remaining budget: </span>
-                <span style={{ color:'#a78bfa', fontWeight:700 }}>${(allocData.remaining ?? 0).toLocaleString()}</span>
+
+            {tlTarget && (
+              <div style={{ marginBottom:16, padding:'10px 14px', background:'rgba(167,139,250,.06)', border:'1px solid rgba(167,139,250,.15)', borderRadius:9, fontSize:'.8rem', display:'flex', flexDirection:'column', gap:4 }}>
+                <div>
+                  <span style={{ color:'rgba(148,163,184,.5)' }}>Your target from AM: </span>
+                  <span style={{ color:'#a78bfa', fontWeight:700 }}>${(tlTarget.assigned_target ?? 0).toLocaleString()}</span>
+                </div>
+                <div>
+                  <span style={{ color:'rgba(148,163,184,.5)' }}>Remaining to allocate: </span>
+                  <span style={{ color: overAllocated ? '#f87171' : '#34d399', fontWeight:700 }}>
+                    ${(tlTarget.remaining_to_allocate ?? 0).toLocaleString()}
+                  </span>
+                </div>
               </div>
             )}
+
             <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
               <div style={{ display:'flex', gap:12 }}>
                 <div style={{ flex:1 }}>
@@ -218,6 +247,11 @@ export default function TeamLeaderAgentsPage() {
                 <label style={lbl}>Target Amount *</label>
                 <input style={inp} type="number" min="0" value={allocForm.allocated_target}
                   onChange={e => setAllocForm(f=>({...f,allocated_target:e.target.value}))} placeholder="e.g. 5000"/>
+                {overAllocated && (
+                  <div style={{ fontSize:'.72rem', color:'#f87171', marginTop:6 }}>
+                    This exceeds what your AM has allocated you — the server will reject it.
+                  </div>
+                )}
               </div>
               <div>
                 <label style={lbl}>Currency</label>

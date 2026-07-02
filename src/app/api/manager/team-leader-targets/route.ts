@@ -1,57 +1,63 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { getCurrentUser } from '@/lib/auth';
 
-export async function GET(req: Request) {
-  try {
-    const { searchParams } = new URL(req.url);
-    const month   = searchParams.get('month');
-    const year    = searchParams.get('year');
-    const team_id = searchParams.get('team_id');
-
-    const targets = await prisma.teamLeaderTarget.findMany({
-      where: {
-        ...(month   ? { month:   parseInt(month) } : {}),
-        ...(year    ? { year:    parseInt(year)  } : {}),
-        ...(team_id ? { team_id }                 : {}),
-      },
-      include: {
-        teamLeader: { select: { id: true, full_name: true, email: true, team_id: true } },
-        team:       { select: { id: true, name: true } },
-      },
-      orderBy: { created_at: 'desc' },
-    });
-    return NextResponse.json({ data: targets });
-  } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 500 });
+export async function PATCH(req: NextRequest) {
+  // TODO: replace with your actual auth check if this shape differs
+  const currentUser = await getCurrentUser();
+  if (!currentUser || currentUser.role !== 'manager') {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
+
+  const { team_leader_id, account_manager_id } = await req.json();
+
+  if (!team_leader_id || !account_manager_id) {
+    return NextResponse.json(
+      { error: 'team_leader_id and account_manager_id are required' },
+      { status: 400 }
+    );
+  }
+
+  const [teamLeader, accountManager] = await Promise.all([
+    prisma.user.findUnique({ where: { id: team_leader_id } }),
+    prisma.user.findUnique({ where: { id: account_manager_id } }),
+  ]);
+
+  if (!teamLeader || teamLeader.role !== 'team_leader') {
+    return NextResponse.json({ error: 'Invalid team_leader_id' }, { status: 400 });
+  }
+  if (!accountManager || accountManager.role !== 'account_manager') {
+    return NextResponse.json({ error: 'Invalid account_manager_id' }, { status: 400 });
+  }
+
+  const updated = await prisma.user.update({
+    where: { id: team_leader_id },
+    data: { assigned_account_manager_id: account_manager_id },
+  });
+
+  return NextResponse.json(updated);
 }
 
-export async function POST(req: Request) {
-  try {
-    const { team_leader_id, team_id, month, year, target_amount, currency, created_by } = await req.json();
-    if (!team_leader_id || !team_id || !month || !year || !target_amount || !created_by)
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
-
-    const target = await prisma.teamLeaderTarget.upsert({
-      where: {
-        team_leader_id_team_id_month_year: {
-          team_leader_id, team_id,
-          month: parseInt(month),
-          year:  parseInt(year),
-        },
-      },
-      update: { target_amount, currency: currency || 'USD' },
-      create: {
-        team_leader_id, team_id,
-        month:    parseInt(month),
-        year:     parseInt(year),
-        target_amount,
-        currency: currency || 'USD',
-        created_by,
-      },
-    });
-    return NextResponse.json({ data: target });
-  } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 500 });
+export async function GET(req: NextRequest) {
+  // List all TLs with their currently assigned AM (for the Manager's assignment screen)
+  const currentUser = await getCurrentUser();
+  if (!currentUser || currentUser.role !== 'manager') {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
+
+  const teamLeaders = await prisma.user.findMany({
+    where: { role: 'team_leader' },
+    select: {
+      id: true,
+      full_name: true,
+      email: true,
+      assigned_account_manager_id: true,
+      assigned_account_manager: {
+        select: { id: true, full_name: true },
+      },
+    },
+    orderBy: { full_name: 'asc' },
+  });
+
+  return NextResponse.json(teamLeaders);
 }
