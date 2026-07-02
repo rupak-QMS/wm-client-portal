@@ -1,174 +1,596 @@
+// src/app/(dashboard)/team-leader/dashboard/page.tsx
 'use client';
-import { useState }    from 'react';
-import { useQuery }    from '@tanstack/react-query';
-import { Users, TrendingUp, Clock, Target, DollarSign, PieChart } from 'lucide-react';
 
-const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
+import {
+  Target, Users, TrendingUp, PieChart, Pencil, Trash2, Plus,
+  Info, Calendar, UserPlus, Clock, CheckCircle,
+} from 'lucide-react';
+
+const CURRENCIES = ['USD', 'AUD', 'NZD', 'GBP', 'EUR'];
+const MONTHS = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+];
+
+type Tab = 'distribute' | 'progress' | 'history';
+
+function daysInMonth(month: number, year: number) { return new Date(year, month, 0).getDate(); }
+
+/** Small hand-rolled SVG donut — same one used on the AM Targets page. */
+function DonutChart({ segments, centerLabel, centerValue }: {
+  segments: { value: number; color: string }[];
+  centerLabel: string;
+  centerValue: string;
+}) {
+  const total = segments.reduce((s, x) => s + x.value, 0) || 1;
+  const radius = 70;
+  const circumference = 2 * Math.PI * radius;
+  let offset = 0;
+  return (
+    <div style={{ position: 'relative', width: 180, height: 180, flexShrink: 0 }}>
+      <svg width={180} height={180} viewBox="0 0 180 180" style={{ transform: 'rotate(-90deg)' }}>
+        <circle cx={90} cy={90} r={radius} fill="none" stroke="rgba(148,163,184,.12)" strokeWidth={22} />
+        {segments.map((seg, i) => {
+          const frac = seg.value / total;
+          const dash = frac * circumference;
+          const circle = (
+            <circle key={i} cx={90} cy={90} r={radius} fill="none" stroke={seg.color} strokeWidth={22}
+              strokeDasharray={`${dash} ${circumference - dash}`} strokeDashoffset={-offset} strokeLinecap="butt" />
+          );
+          offset += dash;
+          return circle;
+        })}
+      </svg>
+      <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ fontSize: '1.2rem', fontWeight: 800, color: '#f1f5f9', textAlign: 'center' }}>{centerValue}</div>
+        <div style={{ fontSize: '.72rem', color: 'rgba(148,163,184,.5)' }}>{centerLabel}</div>
+      </div>
+    </div>
+  );
+}
+
+const inp: React.CSSProperties = { width:'100%', height:40, background:'rgba(255,255,255,.04)', border:'1px solid rgba(124,58,237,.18)', borderRadius:9, padding:'0 12px', fontSize:'.85rem', color:'#f1f5f9', outline:'none', boxSizing:'border-box' };
+const lbl: React.CSSProperties = { fontSize:'.75rem', color:'rgba(148,163,184,.55)', textTransform:'uppercase', letterSpacing:'.05em', display:'block', marginBottom:6 };
 
 export default function TeamLeaderDashboard() {
-  const now   = new Date();
+  const qc = useQueryClient();
+  const now = new Date();
   const [month, setMonth] = useState(now.getMonth() + 1);
-  const [year,  setYear]  = useState(now.getFullYear());
+  const [year, setYear] = useState(now.getFullYear());
+  const [tab, setTab] = useState<Tab>('distribute');
+  const [dirty, setDirty] = useState<Record<string, { amount: string; currency: string }>>({});
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [addLoading, setAddLoading] = useState(false);
+  const [addForm, setAddForm] = useState({ full_name: '', email: '', password: '' });
+  const [history, setHistory] = useState<{ label: string; assigned: number; allocated: number }[] | null>(null);
+  const [historyLoading, setHistoryLoading] = useState(false);
 
   const { data: agents = [], isLoading: agentsLoading } = useQuery<any[]>({
     queryKey: ['tl-agents'],
-    queryFn:  async () => (await fetch('/api/team-leader/agents')).json().then((r:any) => r.data ?? []),
+    queryFn: async () => (await fetch('/api/team-leader/agents')).json().then((r: any) => r.data ?? []),
   });
 
   const { data: me } = useQuery<any>({
     queryKey: ['me'],
-    queryFn:  async () => (await fetch('/api/users/me')).json().then((r:any) => r.data),
+    queryFn: async () => (await fetch('/api/users/me')).json().then((r: any) => r.data),
   });
 
-  // Per-agent allocation breakdown (used for the leaderboard below)
-  const { data: tlData } = useQuery<any>({
+  const { data: tlTarget, refetch: refetchTarget } = useQuery<any>({
+    queryKey: ['tl-target', month, year],
+    queryFn: async () => (await fetch(`/api/team-leader/target?month=${month}&year=${year}`)).json(),
+  });
+
+  const { data: tlAllocData, refetch: refetchAllocations } = useQuery<any>({
     queryKey: ['tl-allocations', me?.id, month, year],
-    enabled:  !!me?.id,
-    queryFn:  async () => {
+    enabled: !!me?.id,
+    queryFn: async () => {
       const res = await fetch(`/api/team-leader/allocations?team_leader_id=${me.id}&month=${month}&year=${year}`);
       return res.json();
     },
   });
 
-  // TL's own target — sourced from the Account Manager's allocation
-  // (replaces the old /api/manager/team-leader-targets flow)
-  const { data: tlTarget } = useQuery<any>({
-    queryKey: ['tl-target', month, year],
-    queryFn:  async () => {
-      const res = await fetch(`/api/team-leader/target?month=${month}&year=${year}`);
-      return res.json();
-    },
-  });
-
-  const active  = agents.filter((a:any) => a.status === 'active');
-  const pending = agents.filter((a:any) => a.status === 'pending');
+  const active = agents.filter((a: any) => a.status === 'active');
+  const pending = agents.filter((a: any) => a.status === 'pending');
   const teamName = me?.team?.name ?? 'My Team';
-  const teamAchieved = active.reduce((s:number, a:any) => s + (a.achieved ?? 0), 0);
 
-  const totalAssigned  = tlTarget?.assigned_target ?? 0;
-  const totalAllocated = tlTarget?.allocated_to_team ?? 0;
-  const totalRemaining = tlTarget?.remaining_to_allocate ?? 0;
-  const allocationPct  = totalAssigned > 0 ? Math.min((totalAllocated / totalAssigned) * 100, 100) : 0;
-  const fromAM          = tlTarget?.from_account_manager;
+  const currency = tlTarget?.currency ?? 'USD';
+  const assignedTarget = tlTarget?.assigned_target ?? 0;
+  const allocatedToTeam = tlTarget?.allocated_to_team ?? 0;
+  const remainingToAllocate = tlTarget?.remaining_to_allocate ?? 0;
+  const teamAchieved = active.reduce((s: number, a: any) => s + (a.achieved ?? 0), 0);
+  const pctAllocated = assignedTarget > 0 ? Math.round((allocatedToTeam / assignedTarget) * 100) : 0;
+  const pctAchieved = assignedTarget > 0 ? Math.round((teamAchieved / assignedTarget) * 100) : 0;
 
-  const prevMonth = () => { if (month===1){setMonth(12);setYear(y=>y-1);}else setMonth(m=>m-1); };
-  const nextMonth = () => { if (month===12){setMonth(1);setYear(y=>y+1);}else setMonth(m=>m+1); };
+  // seed dirty state whenever allocation data changes
+  useEffect(() => {
+    if (!tlAllocData) return;
+    const next: Record<string, { amount: string; currency: string }> = {};
+    for (const a of active) {
+      const existing = (tlAllocData.data ?? []).find((x: any) => x.team_member_id === a.id);
+      next[a.id] = {
+        amount: String(existing?.allocated_target ?? 0),
+        currency: existing?.currency ?? currency,
+      };
+    }
+    setDirty(next);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tlAllocData, agents.length]);
+
+  const loadHistory = useCallback(async () => {
+    if (!me?.id) return;
+    setHistoryLoading(true);
+    try {
+      const points: { label: string; assigned: number; allocated: number }[] = [];
+      let m = month, y = year;
+      for (let i = 0; i < 6; i++) {
+        const res = await fetch(`/api/team-leader/target?month=${m}&year=${y}`);
+        if (res.ok) {
+          const d = await res.json();
+          points.unshift({ label: `${MONTHS[m - 1].slice(0, 3)} ${y}`, assigned: d.assigned_target ?? 0, allocated: d.allocated_to_team ?? 0 });
+        }
+        m -= 1;
+        if (m === 0) { m = 12; y -= 1; }
+      }
+      setHistory(points);
+    } catch {
+      setHistory(null);
+    } finally {
+      setHistoryLoading(false);
+    }
+  }, [me?.id, month, year]);
+
+  useEffect(() => {
+    if (tab === 'history' && !history) loadHistory();
+  }, [tab, history, loadHistory]);
+
+  const saveRow = async (agentId: string) => {
+    const entry = dirty[agentId];
+    if (!entry || !me?.id) return;
+    setSaving(true);
+    setError('');
+    try {
+      const res = await fetch('/api/team-leader/allocations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          team_leader_id: me.id,
+          team_id: me.team_id,
+          team_member_id: agentId,
+          month, year,
+          allocated_target: Number(entry.amount) || 0,
+          currency: entry.currency,
+          created_by: me.id,
+        }),
+      });
+      const json = await res.json();
+      if (json.error) throw new Error(json.error);
+      toast.success('Target updated');
+      await Promise.all([refetchAllocations(), refetchTarget()]);
+      qc.invalidateQueries({ queryKey: ['tl-agents'] });
+    } catch (err: any) {
+      setError(err.message ?? 'Failed to save');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const removeRow = async (agent: any) => {
+    const ok = window.confirm(`Set ${agent.full_name}'s target back to 0 for ${MONTHS[month - 1]} ${year}?`);
+    if (!ok || !me?.id) return;
+    setSaving(true);
+    setError('');
+    try {
+      const entry = dirty[agent.id] ?? { currency };
+      const res = await fetch('/api/team-leader/allocations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          team_leader_id: me.id, team_id: me.team_id, team_member_id: agent.id,
+          month, year, allocated_target: 0, currency: entry.currency, created_by: me.id,
+        }),
+      });
+      const json = await res.json();
+      if (json.error) throw new Error(json.error);
+      await Promise.all([refetchAllocations(), refetchTarget()]);
+    } catch (err: any) {
+      setError(err.message ?? 'Failed to reset');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const saveAll = async () => {
+    if (!me?.id) return;
+    setSaving(true);
+    setError('');
+    try {
+      for (const a of active) {
+        const entry = dirty[a.id];
+        if (!entry) continue;
+        await fetch('/api/team-leader/allocations', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            team_leader_id: me.id, team_id: me.team_id, team_member_id: a.id,
+            month, year, allocated_target: Number(entry.amount) || 0, currency: entry.currency, created_by: me.id,
+          }),
+        });
+      }
+      toast.success('Allocations saved');
+      await Promise.all([refetchAllocations(), refetchTarget()]);
+      qc.invalidateQueries({ queryKey: ['tl-agents'] });
+    } catch (err: any) {
+      setError(err.message ?? 'Some allocations may not have saved — check the table.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const resetDirty = () => {
+    if (!tlAllocData) return;
+    const next: Record<string, { amount: string; currency: string }> = {};
+    for (const a of active) {
+      const existing = (tlAllocData.data ?? []).find((x: any) => x.team_member_id === a.id);
+      next[a.id] = { amount: String(existing?.allocated_target ?? 0), currency: existing?.currency ?? currency };
+    }
+    setDirty(next);
+  };
+
+  const handleAddAgent = async () => {
+    if (!addForm.full_name || !addForm.email || !addForm.password) return toast.error('All fields are required');
+    setAddLoading(true);
+    const res = await fetch('/api/team-leader/agents', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(addForm),
+    });
+    const json = await res.json();
+    setAddLoading(false);
+    if (!res.ok) { toast.error(json.error); return; }
+    toast.success('Agent added — pending manager approval');
+    qc.invalidateQueries({ queryKey: ['tl-agents'] });
+    setShowAddModal(false);
+    setAddForm({ full_name: '', email: '', password: '' });
+  };
+
+  const dirtyTotal = useMemo(() => active.reduce((s: number, a: any) => s + (Number(dirty[a.id]?.amount) || 0), 0), [active, dirty]);
+  const dirtyRemaining = assignedTarget - dirtyTotal;
+
+  const totalDays = daysInMonth(month, year);
+  const daysPassed = (year === now.getFullYear() && month === now.getMonth() + 1)
+    ? Math.min(now.getDate(), totalDays)
+    : (year < now.getFullYear() || (year === now.getFullYear() && month < now.getMonth() + 1)) ? totalDays : 0;
+  const daysRemaining = Math.max(totalDays - daysPassed, 0);
+
+  const statCard = (icon: React.ReactNode, iconBg: string, iconColor: string, label: string, value: string, sub: React.ReactNode) => (
+    <div className="wm-stat" style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
+      <div style={{ width: 46, height: 46, borderRadius: 12, background: iconBg, color: iconColor, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+        {icon}
+      </div>
+      <div style={{ minWidth: 0 }}>
+        <div style={{ fontSize: '.78rem', color: 'rgba(148,163,184,.55)', marginBottom: 4 }}>{label}</div>
+        <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#f1f5f9', lineHeight: 1.15 }}>{value}</div>
+        <div style={{ fontSize: '.75rem', marginTop: 4 }}>{sub}</div>
+      </div>
+    </div>
+  );
 
   return (
-    <div style={{ padding:'32px 28px', maxWidth:1000, margin:'0 auto' }}>
+    <div className="wm-page-inner">
       {/* Header */}
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:28 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 22, flexWrap: 'wrap', gap: 12 }} className="wm-fade-up">
         <div>
-          <div style={{ fontSize:'.72rem', color:'#a78bfa', textTransform:'uppercase', letterSpacing:'.1em', fontWeight:600, marginBottom:6 }}>Team Leader Portal</div>
-          <h1 style={{ fontSize:'1.6rem', fontWeight:700, color:'#f1f5f9', margin:0 }}>{teamName}</h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+            <Target size={15} style={{ color: '#a78bfa' }} />
+            <span style={{ fontSize: '.72rem', color: 'rgba(148,163,184,.5)', textTransform: 'uppercase', letterSpacing: '.06em' }}>Team Leader Portal</span>
+          </div>
+          <h1 style={{ fontSize: '1.65rem', fontWeight: 700, color: '#f1f5f9', marginBottom: 4 }}>{teamName}</h1>
+          <p style={{ fontSize: '.875rem', color: 'rgba(148,163,184,.5)' }}>Distribute your target to agents and track team progress.</p>
         </div>
-        {/* Month selector */}
-        <div style={{ display:'flex', alignItems:'center', gap:8, background:'rgba(255,255,255,.03)', border:'1px solid rgba(124,58,237,.15)', borderRadius:12, padding:'6px 14px' }}>
-          <button onClick={prevMonth} style={{ background:'none', border:'none', color:'rgba(148,163,184,.5)', cursor:'pointer', fontSize:'1rem' }}>‹</button>
-          <span style={{ fontSize:'.85rem', fontWeight:600, color:'#f1f5f9', minWidth:90, textAlign:'center' }}>{MONTHS[month-1]} {year}</span>
-          <button onClick={nextMonth} style={{ background:'none', border:'none', color:'rgba(148,163,184,.5)', cursor:'pointer', fontSize:'1rem' }}>›</button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(255,255,255,.04)', border: '1px solid rgba(124,58,237,.18)', borderRadius: 10, padding: '8px 12px' }}>
+          <Calendar size={14} style={{ color: 'rgba(148,163,184,.5)' }} />
+          <select value={month} onChange={(e) => setMonth(Number(e.target.value))} style={{ background: 'none', border: 'none', color: '#f1f5f9', fontSize: '.82rem', outline: 'none' }}>
+            {MONTHS.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
+          </select>
+          <select value={year} onChange={(e) => setYear(Number(e.target.value))} style={{ background: 'none', border: 'none', color: '#f1f5f9', fontSize: '.82rem', outline: 'none' }}>
+            {[year - 1, year, year + 1].map((y) => <option key={y} value={y}>{y}</option>)}
+          </select>
         </div>
       </div>
 
-      {/* Target summary cards */}
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))', gap:14, marginBottom:28 }}>
-        {[
-          { icon:<Target size={20}/>,     label:'Assigned Target',   value: totalAssigned>0  ? `$${totalAssigned.toLocaleString()}`  : '—',  color:'#a78bfa' },
-          { icon:<DollarSign size={20}/>, label:'Allocated to Team', value: totalAllocated>0 ? `$${totalAllocated.toLocaleString()}` : '$0', color:'#60a5fa' },
-          { icon:<PieChart size={20}/>,   label:'Remaining to Alloc',value: totalAssigned>0  ? `$${totalRemaining.toLocaleString()}` : '—',  color:'#fbbf24' },
-          { icon:<TrendingUp size={20}/>, label:'Team Achieved',     value: `$${teamAchieved.toLocaleString()}`,                            color:'#34d399' },
-        ].map(({ icon, label, value, color }) => (
-          <div key={label} style={{ background:'rgba(255,255,255,.03)', border:'1px solid rgba(124,58,237,.15)', borderRadius:14, padding:'20px 24px', display:'flex', alignItems:'center', gap:16 }}>
-            <div style={{ width:44, height:44, borderRadius:12, background:`${color}18`, display:'flex', alignItems:'center', justifyContent:'center', color }}>{icon}</div>
-            <div>
-              <div style={{ fontSize:'.72rem', color:'rgba(148,163,184,.5)', textTransform:'uppercase', letterSpacing:'.06em' }}>{label}</div>
-              <div style={{ fontSize:'1.35rem', fontWeight:700, color:'#f1f5f9', marginTop:2 }}>{value}</div>
+      {error && (
+        <div className="wm-badge wm-badge-red" style={{ display: 'flex', padding: '12px 16px', borderRadius: 12, fontSize: '.85rem', marginBottom: 20, fontWeight: 500 }}>
+          {error}
+        </div>
+      )}
+
+      {/* Colorful stat cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))', gap: 16, marginBottom: 20 }} className="wm-fade-up">
+        {statCard(<Target size={20} />, 'rgba(96,165,250,.18)', '#60a5fa', 'Assigned Target', assignedTarget > 0 ? `${currency} ${assignedTarget.toLocaleString()}` : '—', <span style={{ color: 'rgba(148,163,184,.5)' }}>From {tlTarget?.from_account_manager?.full_name ?? 'your AM'}</span>)}
+        {statCard(<Users size={20} />, 'rgba(52,211,153,.18)', '#34d399', 'Allocated to Team', `${currency} ${allocatedToTeam.toLocaleString()}`, <span style={{ color: '#34d399', fontWeight: 600 }}>{pctAllocated}% of target</span>)}
+        {statCard(<PieChart size={20} />, 'rgba(251,191,36,.18)', '#fbbf24', 'Remaining to Allocate', assignedTarget > 0 ? `${currency} ${Math.max(remainingToAllocate, 0).toLocaleString()}` : '—', <span style={{ color: remainingToAllocate < 0 ? '#f87171' : '#fbbf24', fontWeight: 600 }}>{remainingToAllocate < 0 ? 'Over-allocated' : `${100 - pctAllocated}% left`}</span>)}
+        {statCard(<TrendingUp size={20} />, 'rgba(167,139,250,.18)', '#a78bfa', 'Team Achieved', `${currency} ${teamAchieved.toLocaleString()}`, <span style={{ color: 'rgba(148,163,184,.5)' }}>{pctAchieved}% of target</span>)}
+      </div>
+
+      {/* Overview + period info */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(280px,1fr) minmax(260px,1fr)', gap: 16, marginBottom: 22 }} className="wm-fade-up-2">
+        <div className="wm-card" style={{ padding: '20px 22px' }}>
+          <div style={{ fontWeight: 700, color: '#f1f5f9', marginBottom: 18 }}>Target Overview</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 24, flexWrap: 'wrap' }}>
+            <DonutChart
+              centerLabel="Assigned"
+              centerValue={assignedTarget > 0 ? `${currency} ${assignedTarget.toLocaleString()}` : '—'}
+              segments={[
+                { value: Math.max(allocatedToTeam - teamAchieved, 0), color: '#60a5fa' },
+                { value: Math.max(remainingToAllocate, 0), color: '#34d399' },
+                { value: Math.max(teamAchieved, 0), color: '#a78bfa' },
+              ]}
+            />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, flex: 1, minWidth: 160 }}>
+              {[
+                { color: '#60a5fa', label: 'Allocated to Team', value: allocatedToTeam, pct: pctAllocated },
+                { color: '#34d399', label: 'Remaining to Allocate', value: Math.max(remainingToAllocate, 0), pct: assignedTarget > 0 ? Math.round((Math.max(remainingToAllocate, 0) / assignedTarget) * 100) : 0 },
+                { color: '#a78bfa', label: 'Achieved', value: teamAchieved, pct: pctAchieved },
+              ].map((s) => (
+                <div key={s.label} style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                  <div style={{ width: 9, height: 9, borderRadius: '50%', background: s.color, marginTop: 4, flexShrink: 0 }} />
+                  <div>
+                    <div style={{ fontSize: '.82rem', color: '#f1f5f9', fontWeight: 600 }}>{s.label}</div>
+                    <div style={{ fontSize: '.78rem', color: 'rgba(148,163,184,.5)' }}>{currency} {s.value.toLocaleString()} ({s.pct}%)</div>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
+        </div>
+
+        <div className="wm-card" style={{ padding: '20px 22px' }}>
+          <div style={{ fontWeight: 700, color: '#f1f5f9', marginBottom: 16 }}>About This Period</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {[
+              ['Period', `1 ${MONTHS[month - 1]} ${year} – ${totalDays} ${MONTHS[month - 1]} ${year}`],
+              ['Your Role', 'Team Leader'],
+              ['Total Working Days', String(totalDays)],
+              ['Days Passed', String(daysPassed)],
+              ['Days Remaining', String(daysRemaining)],
+            ].map(([k, v]) => (
+              <div key={k} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.85rem', paddingBottom: 10, borderBottom: '1px solid rgba(124,58,237,.08)' }}>
+                <span style={{ color: 'rgba(148,163,184,.5)' }}>{k}</span>
+                <span style={{ color: '#f1f5f9', fontWeight: 600 }}>{v}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div style={{ display: 'flex', gap: 4, borderBottom: '1px solid rgba(124,58,237,.12)', marginBottom: 18 }} className="wm-fade-up-3">
+        {([
+          ['distribute', 'Distribute to Agents'],
+          ['progress', 'Team Progress'],
+          ['history', 'Distribution History'],
+        ] as [Tab, string][]).map(([key, label]) => (
+          <button key={key} onClick={() => setTab(key)}
+            style={{
+              background: 'none', border: 'none', cursor: 'pointer', padding: '10px 4px', marginRight: 20,
+              fontSize: '.85rem', fontWeight: 600,
+              color: tab === key ? '#a78bfa' : 'rgba(148,163,184,.5)',
+              borderBottom: tab === key ? '2px solid #a78bfa' : '2px solid transparent',
+            }}>
+            {label}
+          </button>
         ))}
       </div>
 
-      {/* Allocation progress */}
-      {totalAssigned > 0 && (
-        <div style={{ marginBottom:28, background:'rgba(255,255,255,.02)', border:'1px solid rgba(124,58,237,.12)', borderRadius:14, padding:'20px 24px' }}>
-          <div style={{ display:'flex', justifyContent:'space-between', marginBottom:10 }}>
-            <span style={{ fontSize:'.85rem', fontWeight:600, color:'#f1f5f9' }}>Target Allocation Progress</span>
-            <span style={{ fontSize:'.85rem', color:'#a78bfa', fontWeight:600 }}>{allocationPct.toFixed(1)}%</span>
+      {/* Tab: Distribute to Agents */}
+      {tab === 'distribute' && (
+        <div className="wm-card" style={{ overflow: 'hidden' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', borderBottom: '1px solid rgba(124,58,237,.1)', flexWrap: 'wrap', gap: 10 }}>
+            <div>
+              <div style={{ fontWeight: 700, color: '#f1f5f9' }}>Your Agents</div>
+              <div style={{ fontSize: '.78rem', color: 'rgba(148,163,184,.45)', marginTop: 2 }}>Allocate target to your agents. You can edit anytime.</div>
+            </div>
+            <button className="wm-btn-primary" onClick={() => setShowAddModal(true)} style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: '.8rem' }}>
+              <UserPlus size={14} /> Add Agent
+            </button>
           </div>
-          <div style={{ height:8, background:'rgba(255,255,255,.06)', borderRadius:99 }}>
-            <div style={{ height:'100%', width:`${allocationPct}%`, background:'linear-gradient(90deg,#7c3aed,#a78bfa)', borderRadius:99, transition:'width .5s' }}/>
+
+          {agentsLoading ? (
+            <div style={{ padding: 40, textAlign: 'center', color: 'rgba(148,163,184,.4)' }}>Loading…</div>
+          ) : active.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: 40, color: 'rgba(148,163,184,.4)', fontSize: '.85rem' }}>No active agents yet.</div>
+          ) : (
+            <div style={{ overflowX: 'auto' }}>
+              <table className="wm-table">
+                <thead>
+                  <tr>
+                    <th>Agent</th>
+                    <th>Total Allocated</th>
+                    <th>Progress</th>
+                    <th>Remaining</th>
+                    <th style={{ textAlign: 'right' }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {active.map((a: any) => {
+                    const entry = dirty[a.id] ?? { amount: '0', currency };
+                    const amt = Number(entry.amount) || 0;
+                    const achieved = a.achieved ?? 0;
+                    const pct = amt > 0 ? Math.min(100, Math.round((achieved / amt) * 100)) : 0;
+                    const remaining = Math.max(amt - achieved, 0);
+                    return (
+                      <tr key={a.id}>
+                        <td>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <div style={{ width: 34, height: 34, borderRadius: '50%', background: 'linear-gradient(135deg,#7c3aed,#3b82f6)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '.78rem', flexShrink: 0 }}>
+                              {a.full_name.charAt(0).toUpperCase()}
+                            </div>
+                            <div>
+                              <div style={{ fontWeight: 600, fontSize: '.87rem', color: '#f1f5f9' }}>{a.full_name}</div>
+                              <div style={{ fontSize: '.75rem', color: 'rgba(148,163,184,.45)' }}>{a.email}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td>
+                          <div style={{ fontWeight: 700, color: '#a78bfa', fontSize: '.85rem', marginBottom: 4 }}>{entry.currency} {amt.toLocaleString()}</div>
+                          <div style={{ display: 'flex', gap: 6 }}>
+                            <input type="number" min={0} value={entry.amount}
+                              onChange={(e) => setDirty((prev) => ({ ...prev, [a.id]: { ...entry, amount: e.target.value } }))}
+                              className="wm-input" style={{ width: 100 }} />
+                            <select value={entry.currency}
+                              onChange={(e) => setDirty((prev) => ({ ...prev, [a.id]: { ...entry, currency: e.target.value } }))}
+                              className="wm-input" style={{ width: 'auto', minWidth: 70 }}>
+                              {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                            </select>
+                          </div>
+                        </td>
+                        <td>
+                          <div style={{ fontSize: '.82rem', color: '#f1f5f9', marginBottom: 6 }}>{entry.currency} {achieved.toLocaleString()}</div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <div style={{ flex: 1, height: 6, background: 'rgba(255,255,255,.08)', borderRadius: 99, minWidth: 60 }}>
+                              <div style={{ height: '100%', width: `${pct}%`, background: 'linear-gradient(90deg,#34d399,#10b981)', borderRadius: 99 }} />
+                            </div>
+                            <span style={{ fontSize: '.75rem', color: 'rgba(148,163,184,.5)' }}>{pct}%</span>
+                          </div>
+                        </td>
+                        <td style={{ color: 'rgba(148,163,184,.6)', fontSize: '.85rem' }}>{entry.currency} {remaining.toLocaleString()}</td>
+                        <td>
+                          <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                            <button onClick={() => saveRow(a.id)} disabled={saving} title="Save"
+                              style={{ width: 30, height: 30, borderRadius: 8, border: '1px solid rgba(124,58,237,.2)', background: 'rgba(124,58,237,.1)', color: '#a78bfa', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              <Pencil size={13} />
+                            </button>
+                            <button onClick={() => removeRow(a)} disabled={saving} title="Reset to 0"
+                              style={{ width: 30, height: 30, borderRadius: 8, border: '1px solid rgba(248,113,113,.25)', background: 'rgba(248,113,113,.1)', color: '#f87171', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+                <tfoot>
+                  <tr style={{ fontWeight: 700 }}>
+                    <td style={{ color: '#a78bfa' }}>Total Allocated</td>
+                    <td colSpan={2} style={{ color: '#a78bfa' }}>{currency} {dirtyTotal.toLocaleString()}</td>
+                    <td colSpan={2} style={{ color: dirtyRemaining < 0 ? '#f87171' : '#34d399' }}>
+                      Remaining: {currency} {dirtyRemaining.toLocaleString()} ({assignedTarget > 0 ? Math.round((dirtyRemaining / assignedTarget) * 100) : 0}%)
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          )}
+
+          {pending.length > 0 && (
+            <div style={{ padding: '12px 20px', background: 'rgba(251,191,36,.04)', borderTop: '1px solid rgba(251,191,36,.1)', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Clock size={13} style={{ color: '#fbbf24' }} />
+              <span style={{ fontSize: '.78rem', color: '#fbbf24' }}>{pending.length} agent{pending.length > 1 ? 's' : ''} awaiting manager approval</span>
+            </div>
+          )}
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', borderTop: '1px solid rgba(124,58,237,.1)', flexWrap: 'wrap', gap: 12 }}>
+            <div className="wm-badge wm-badge-blue" style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '.78rem', fontWeight: 500, padding: '8px 14px' }}>
+              <Info size={14} style={{ flexShrink: 0 }} />
+              Your total allocation to agents can't exceed {currency} {assignedTarget.toLocaleString()} — the target your Account Manager assigned you.
+            </div>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button onClick={resetDirty} className="wm-btn-ghost">Reset</button>
+              <button onClick={saveAll} disabled={saving} className="wm-btn-primary">{saving ? 'Saving…' : 'Save Allocation'}</button>
+            </div>
           </div>
-          <div style={{ display:'flex', justifyContent:'space-between', marginTop:8, fontSize:'.75rem', color:'rgba(148,163,184,.4)' }}>
-            <span>Allocated: ${totalAllocated.toLocaleString()}</span>
-            <span>Remaining: ${Math.max(totalRemaining,0).toLocaleString()}</span>
+        </div>
+      )}
+
+      {/* Tab: Team Progress (leaderboard) */}
+      {tab === 'progress' && (
+        <div className="wm-card" style={{ overflow: 'hidden' }}>
+          <div style={{ padding: '16px 20px', borderBottom: '1px solid rgba(124,58,237,.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontWeight: 700, color: '#f1f5f9' }}>Team Performance</span>
+            <span style={{ fontSize: '.75rem', color: 'rgba(148,163,184,.4)' }}>{active.length} active agents</span>
           </div>
-          {/* Source of this target */}
-          {fromAM?.full_name && (
-            <div style={{ marginTop:16, display:'flex', alignItems:'center', gap:8, fontSize:'.8rem', padding:'8px 12px', background:'rgba(124,58,237,.06)', borderRadius:8 }}>
-              <span style={{ color:'rgba(148,163,184,.7)' }}>Target assigned by:</span>
-              <span style={{ color:'#a78bfa', fontWeight:600 }}>{fromAM.full_name}</span>
+          {active.length === 0 ? (
+            <div style={{ padding: 40, textAlign: 'center', color: 'rgba(148,163,184,.3)', fontSize: '.85rem' }}>No active agents yet.</div>
+          ) : (
+            [...active].sort((a: any, b: any) => (b.achieved ?? 0) - (a.achieved ?? 0)).map((a: any, i: number) => {
+              const entry = dirty[a.id];
+              const allocated = Number(entry?.amount ?? 0);
+              const achieved = a.achieved ?? 0;
+              const pct = allocated > 0 ? Math.min(100, Math.round((achieved / allocated) * 100)) : 0;
+              return (
+                <div key={a.id} style={{ padding: '14px 20px', borderBottom: '1px solid rgba(124,58,237,.07)', display: 'flex', alignItems: 'center', gap: 14 }}>
+                  <div style={{ width: 26, height: 26, borderRadius: '50%', background: 'rgba(124,58,237,.18)', color: '#a78bfa', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '.75rem', fontWeight: 700, flexShrink: 0 }}>{i + 1}</div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                      <span style={{ fontSize: '.875rem', fontWeight: 600, color: '#f1f5f9' }}>{a.full_name}</span>
+                      <span style={{ fontSize: '.8rem', color: 'rgba(148,163,184,.4)' }}>Target: {allocated > 0 ? `${entry?.currency ?? currency} ${allocated.toLocaleString()}` : '—'}</span>
+                    </div>
+                    <div style={{ height: 5, background: 'rgba(255,255,255,.06)', borderRadius: 9 }}>
+                      <div style={{ height: '100%', width: `${pct}%`, background: 'linear-gradient(90deg,#34d399,#10b981)', borderRadius: 9 }} />
+                    </div>
+                  </div>
+                  <div style={{ fontSize: '.95rem', fontWeight: 700, color: '#34d399', flexShrink: 0 }}>{currency} {achieved.toLocaleString()}</div>
+                </div>
+              );
+            })
+          )}
+        </div>
+      )}
+
+      {/* Tab: Distribution History */}
+      {tab === 'history' && (
+        <div className="wm-card" style={{ padding: '22px 24px' }}>
+          <div style={{ fontWeight: 700, color: '#f1f5f9', marginBottom: 4 }}>Distribution History</div>
+          <div style={{ fontSize: '.78rem', color: 'rgba(148,163,184,.45)', marginBottom: 18 }}>Last 6 months, based on your assigned target vs. what you allocated to agents.</div>
+          {historyLoading ? (
+            <div style={{ padding: 30, textAlign: 'center', color: 'rgba(148,163,184,.4)' }}>Loading…</div>
+          ) : !history || history.length === 0 ? (
+            <div style={{ padding: 30, textAlign: 'center', color: 'rgba(148,163,184,.4)', fontSize: '.85rem' }}>No history available.</div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {history.map((h) => {
+                const pct = h.assigned > 0 ? Math.min(100, Math.round((h.allocated / h.assigned) * 100)) : 0;
+                return (
+                  <div key={h.label}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.82rem', marginBottom: 5 }}>
+                      <span style={{ color: '#f1f5f9', fontWeight: 600 }}>{h.label}</span>
+                      <span style={{ color: 'rgba(148,163,184,.5)' }}>{currency} {h.allocated.toLocaleString()} / {currency} {h.assigned.toLocaleString()}</span>
+                    </div>
+                    <div style={{ height: 8, background: 'rgba(255,255,255,.08)', borderRadius: 99 }}>
+                      <div style={{ height: '100%', width: `${pct}%`, background: 'linear-gradient(90deg,#60a5fa,#3b82f6)', borderRadius: 99 }} />
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
       )}
 
-      {/* Agent stats */}
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(160px,1fr))', gap:14, marginBottom:28 }}>
-        {[
-          { icon:<Users size={18}/>,     label:'Active Agents',    value: active.length,  color:'#34d399' },
-          { icon:<Clock size={18}/>,     label:'Pending Approval', value: pending.length, color:'#fbbf24' },
-        ].map(({ icon, label, value, color }) => (
-          <div key={label} style={{ background:'rgba(255,255,255,.03)', border:'1px solid rgba(124,58,237,.15)', borderRadius:14, padding:'16px 20px', display:'flex', alignItems:'center', gap:12 }}>
-            <div style={{ width:36, height:36, borderRadius:10, background:`${color}18`, display:'flex', alignItems:'center', justifyContent:'center', color }}>{icon}</div>
-            <div>
-              <div style={{ fontSize:'.72rem', color:'rgba(148,163,184,.5)', textTransform:'uppercase', letterSpacing:'.06em' }}>{label}</div>
-              <div style={{ fontSize:'1.25rem', fontWeight:700, color:'#f1f5f9' }}>{value}</div>
+      {/* Add Agent modal (moved here from the old /team-leader/agents page) */}
+      {showAddModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: 20 }}>
+          <div style={{ background: '#0f0f1a', border: '1px solid rgba(124,58,237,.25)', borderRadius: 18, padding: 28, width: '100%', maxWidth: 420 }}>
+            <h2 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#f1f5f9', margin: '0 0 20px' }}>Add New Agent</h2>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div><label style={lbl}>Full Name</label><input style={inp} value={addForm.full_name} onChange={(e) => setAddForm((f) => ({ ...f, full_name: e.target.value }))} placeholder="Jane Smith" /></div>
+              <div><label style={lbl}>Email</label><input style={inp} type="email" value={addForm.email} onChange={(e) => setAddForm((f) => ({ ...f, email: e.target.value }))} placeholder="jane@example.com" /></div>
+              <div><label style={lbl}>Temporary Password</label><input style={inp} type="password" value={addForm.password} onChange={(e) => setAddForm((f) => ({ ...f, password: e.target.value }))} placeholder="Min 8 characters" /></div>
+              <div style={{ background: 'rgba(251,191,36,.07)', border: '1px solid rgba(251,191,36,.15)', borderRadius: 9, padding: '10px 14px', fontSize: '.78rem', color: '#fbbf24' }}>
+                This agent will be pending until the manager approves their account.
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
+              <button className="wm-btn-ghost" onClick={() => setShowAddModal(false)} style={{ flex: 1, height: 40 }}>Cancel</button>
+              <button className="wm-btn-primary" onClick={handleAddAgent} disabled={addLoading} style={{ flex: 1, height: 40 }}>{addLoading ? 'Adding…' : 'Add Agent'}</button>
             </div>
           </div>
-        ))}
-      </div>
-
-      {/* Team leaderboard */}
-      <div style={{ background:'rgba(255,255,255,.02)', border:'1px solid rgba(124,58,237,.12)', borderRadius:16, overflow:'hidden' }}>
-        <div style={{ padding:'16px 20px', borderBottom:'1px solid rgba(124,58,237,.1)', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-          <span style={{ fontWeight:600, color:'#f1f5f9' }}>Team Performance</span>
-          <span style={{ fontSize:'.75rem', color:'rgba(148,163,184,.4)' }}>{active.length} active agents</span>
         </div>
-        {agentsLoading ? (
-          <div style={{ padding:40, textAlign:'center', color:'rgba(148,163,184,.4)' }}>Loading…</div>
-        ) : active.length === 0 ? (
-          <div style={{ padding:40, textAlign:'center', color:'rgba(148,163,184,.3)', fontSize:'.85rem' }}>No active agents yet.</div>
-        ) : (
-          <div>
-            {[...active].sort((a:any,b:any) => b.achieved-a.achieved).map((a:any, i:number) => {
-              const allocation = (tlData?.data ?? []).find((x:any) => x.team_member_id === a.id);
-              const allocated  = Number(allocation?.allocated_target ?? 0);
-              const achieved   = a.achieved ?? 0;
-              const pct        = allocated > 0 ? Math.min((achieved/allocated)*100,100) : 0;
-              return (
-                <div key={a.id} style={{ padding:'14px 20px', borderBottom:'1px solid rgba(124,58,237,.07)', display:'flex', alignItems:'center', gap:14 }}>
-                  <div style={{ width:26, height:26, borderRadius:'50%', background:'rgba(124,58,237,.18)', color:'#a78bfa', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'.75rem', fontWeight:700, flexShrink:0 }}>{i+1}</div>
-                  <div style={{ flex:1, minWidth:0 }}>
-                    <div style={{ display:'flex', justifyContent:'space-between', marginBottom:4 }}>
-                      <span style={{ fontSize:'.875rem', fontWeight:600, color:'#f1f5f9' }}>{a.full_name}</span>
-                      <span style={{ fontSize:'.8rem', color:'rgba(148,163,184,.4)' }}>Target: {allocated>0?`$${allocated.toLocaleString()}`:'—'}</span>
-                    </div>
-                    <div style={{ height:5, background:'rgba(255,255,255,.06)', borderRadius:9 }}>
-                      <div style={{ height:'100%', width:`${pct}%`, background:'linear-gradient(90deg,#34d399,#10b981)', borderRadius:9, transition:'width .4s' }}/>
-                    </div>
-                  </div>
-                  <div style={{ fontSize:'.95rem', fontWeight:700, color:'#34d399', flexShrink:0 }}>${achieved.toLocaleString()}</div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-        {pending.length > 0 && (
-          <div style={{ padding:'12px 20px', background:'rgba(251,191,36,.04)', borderTop:'1px solid rgba(251,191,36,.1)' }}>
-            <span style={{ fontSize:'.78rem', color:'#fbbf24' }}>⏳ {pending.length} agent{pending.length>1?'s':''} awaiting manager approval</span>
-          </div>
-        )}
-      </div>
+      )}
     </div>
   );
 }
