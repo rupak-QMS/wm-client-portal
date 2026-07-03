@@ -47,6 +47,7 @@ const NAV_SALES = [
 const NAV_TEAM_LEADER = [
   { href: '/team-leader/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { href: '/team-leader/agents',    icon: Users,           label: 'My Agents' },
+  { href: '/team-leader/targets',   icon: Target,          label: 'Targets'   },
 ];
 
 const NAV_CLIENT = [
