@@ -1,9 +1,3 @@
-// src/app/(dashboard)/account/targets/page.tsx
-// FINAL CONSOLIDATED VERSION — replaces every earlier /account/targets file
-// from this build (delete/ignore any older copies you may still have).
-// Combines: colorful stat cards + donut chart + tabs (from the mockup),
-// currency per allocation, and search + "distribute evenly" for scaling
-// to many Team Leaders.
 'use client';
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
@@ -52,24 +46,31 @@ function DonutChart({ segments, centerLabel, centerValue }: {
   const radius = 70;
   const circumference = 2 * Math.PI * radius;
   let offset = 0;
+  // Split "USD 10,000" into currency + amount so long values don't
+  // overflow the ring — render on two lines instead of squeezing one.
+  const parts = centerValue.split(' ');
+  const amountPart = parts.length > 1 ? parts.slice(1).join(' ') : centerValue;
+  const currencyPart = parts.length > 1 ? parts[0] : null;
+  const amountFontSize = amountPart.length > 9 ? '1.05rem' : amountPart.length > 6 ? '1.15rem' : '1.3rem';
   return (
     <div style={{ position: 'relative', width: 180, height: 180, flexShrink: 0 }}>
       <svg width={180} height={180} viewBox="0 0 180 180" style={{ transform: 'rotate(-90deg)' }}>
-        <circle cx={90} cy={90} r={radius} fill="none" stroke="rgba(148,163,184,.12)" strokeWidth={22} />
+        <circle cx={90} cy={90} r={radius} fill="none" stroke="rgba(148,163,184,.12)" strokeWidth={20} />
         {segments.map((seg, i) => {
           const frac = seg.value / total;
           const dash = frac * circumference;
           const circle = (
-            <circle key={i} cx={90} cy={90} r={radius} fill="none" stroke={seg.color} strokeWidth={22}
+            <circle key={i} cx={90} cy={90} r={radius} fill="none" stroke={seg.color} strokeWidth={20}
               strokeDasharray={`${dash} ${circumference - dash}`} strokeDashoffset={-offset} strokeLinecap="butt" />
           );
           offset += dash;
           return circle;
         })}
       </svg>
-      <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ fontSize: '1.3rem', fontWeight: 800, color: '#f1f5f9' }}>{centerValue}</div>
-        <div style={{ fontSize: '.72rem', color: 'rgba(148,163,184,.5)' }}>{centerLabel}</div>
+      <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '0 28px', textAlign: 'center' }}>
+        {currencyPart && <div style={{ fontSize: '.68rem', color: 'rgba(148,163,184,.55)', fontWeight: 600, letterSpacing: '.03em' }}>{currencyPart}</div>}
+        <div style={{ fontSize: amountFontSize, fontWeight: 800, color: '#f1f5f9', lineHeight: 1.15, wordBreak: 'break-word' }}>{amountPart}</div>
+        <div style={{ fontSize: '.68rem', color: 'rgba(148,163,184,.5)', marginTop: 2 }}>{centerLabel}</div>
       </div>
     </div>
   );
