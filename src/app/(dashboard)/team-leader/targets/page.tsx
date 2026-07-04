@@ -138,7 +138,7 @@ export default function TeamLeaderTargetsPage() {
     return memberRows.filter((r) => r.name.toLowerCase().includes(q) || r.subtitle.toLowerCase().includes(q));
   }, [memberRows, search]);
 
-  const startEdit = (row: MemberRow) => { setEditingKey(row.key); setEditValue(String(row.target)); setEditCurrency(row.currency); };
+  const startEdit = (row: MemberRow) => { setEditingKey(row.key); setEditValue(String(row.target)); };
   const cancelEdit = () => { setEditingKey(null); setEditValue(''); };
 
   const postAllocation = async (memberId: string, amount: number) => {
