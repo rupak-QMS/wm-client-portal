@@ -1,3 +1,6 @@
+// src/app/(dashboard)/team-leader/targets/page.tsx
+// Mirrors the Manager Targets / AM Targets pattern exactly, scoped to
+// this Team Leader's own team members.
 'use client';
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
