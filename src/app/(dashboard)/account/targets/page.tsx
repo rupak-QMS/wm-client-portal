@@ -6,7 +6,8 @@ import {
   Info, Calendar, Search, Wand2,
 } from 'lucide-react';
 
-const CURRENCIES = ['USD', 'AUD', 'NZD', 'GBP', 'EUR'];
+// Currency is inherited from the Manager-set target, not chosen per row —
+// see the read-only currency badge next to each amount instead of a picker.
 const MONTHS = [
   'January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December',
@@ -89,9 +90,7 @@ export default function AccountManagerTargetsPage() {
   const [search, setSearch] = useState('');
   const [editingKey, setEditingKey] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
-  const [editCurrency, setEditCurrency] = useState('USD');
   const [selfInput, setSelfInput] = useState('');
-  const [selfCurrency, setSelfCurrency] = useState('USD');
   const [history, setHistory] = useState<{ label: string; total: number; allocated: number }[] | null>(null);
   const [historyLoading, setHistoryLoading] = useState(false);
 
@@ -116,7 +115,6 @@ export default function AccountManagerTargetsPage() {
       const allocData: AllocationsResponse = await allocRes.json();
       setData(allocData);
       setSelfInput(String(allocData.self_allocation.allocated_amount));
-      setSelfCurrency(allocData.self_allocation.currency ?? allocData.total_target_currency ?? 'USD');
       setTeamLeaders(await tlRes.json());
     } catch (err: any) {
       setError(err.message ?? 'Something went wrong');
@@ -163,18 +161,18 @@ export default function AccountManagerTargetsPage() {
   const saveSelf = async () => {
     setSaving(true); setError('');
     try {
-      await postAllocation({ month, year, type: 'self', allocated_amount: Number(selfInput) || 0, currency: selfCurrency });
+      await postAllocation({ month, year, type: 'self', allocated_amount: Number(selfInput) || 0 });
       await load();
     } catch (err: any) { setError(err.message); } finally { setSaving(false); }
   };
 
-  const startEdit = (row: TLRow) => { setEditingKey(row.key); setEditValue(String(row.target)); setEditCurrency(row.currency); };
+  const startEdit = (row: TLRow) => { setEditingKey(row.key); setEditValue(String(row.target)); };
   const cancelEdit = () => { setEditingKey(null); setEditValue(''); };
 
   const saveTlEdit = async (row: TLRow) => {
     setSaving(true); setError('');
     try {
-      await postAllocation({ month, year, type: 'team_leader', team_leader_id: row.teamLeaderId, allocated_amount: Number(editValue) || 0, currency: editCurrency });
+      await postAllocation({ month, year, type: 'team_leader', team_leader_id: row.teamLeaderId, allocated_amount: Number(editValue) || 0 });
       await load();
       setEditingKey(null);
     } catch (err: any) { setError(err.message); } finally { setSaving(false); }
@@ -185,7 +183,7 @@ export default function AccountManagerTargetsPage() {
     if (!ok) return;
     setSaving(true); setError('');
     try {
-      await postAllocation({ month, year, type: 'team_leader', team_leader_id: row.teamLeaderId, allocated_amount: 0, currency: row.currency });
+      await postAllocation({ month, year, type: 'team_leader', team_leader_id: row.teamLeaderId, allocated_amount: 0 });
       await load();
     } catch (err: any) { setError(err.message); } finally { setSaving(false); }
   };
@@ -202,7 +200,7 @@ export default function AccountManagerTargetsPage() {
     if (!ok) return;
     setSaving(true); setError('');
     try {
-      await Promise.all(teamLeaders.map((tl) => postAllocation({ month, year, type: 'team_leader', team_leader_id: tl.id, allocated_amount: share, currency })));
+      await Promise.all(teamLeaders.map((tl) => postAllocation({ month, year, type: 'team_leader', team_leader_id: tl.id, allocated_amount: share })));
       await load();
     } catch (err: any) { setError(err.message ?? 'Failed to distribute evenly.'); } finally { setSaving(false); }
   };
@@ -356,11 +354,9 @@ export default function AccountManagerTargetsPage() {
                 <div style={{ fontSize: '.8rem', fontWeight: 700, color: '#f1f5f9', marginBottom: 10 }}>My Own Target</div>
                 <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
                   <input type="number" min={0} value={selfInput} onChange={(e) => setSelfInput(e.target.value)} className="wm-input" style={{ width: 160 }} />
-                  <select value={selfCurrency} onChange={(e) => setSelfCurrency(e.target.value)} className="wm-input" style={{ width: 'auto', minWidth: 90 }}>
-                    {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
-                  </select>
+                  <span style={{ padding: '0 12px', height: 40, display: 'flex', alignItems: 'center', borderRadius: 9, background: 'rgba(124,58,237,.1)', color: '#a78bfa', fontSize: '.8rem', fontWeight: 700 }}>{currency}</span>
                   <button onClick={saveSelf} disabled={saving} className="wm-btn-primary">{saving ? 'Saving…' : 'Save'}</button>
-                  <span style={{ fontSize: '.8rem', color: 'rgba(148,163,184,.5)' }}>Achieved: <strong style={{ color: '#34d399' }}>{selfCurrency} {selfAchieved.toLocaleString()}</strong></span>
+                  <span style={{ fontSize: '.8rem', color: 'rgba(148,163,184,.5)' }}>Achieved: <strong style={{ color: '#34d399' }}>{currency} {selfAchieved.toLocaleString()}</strong></span>
                 </div>
               </div>
 
@@ -418,9 +414,7 @@ export default function AccountManagerTargetsPage() {
                                 {isEditing ? (
                                   <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
                                     <input type="number" min={0} autoFocus value={editValue} onChange={(e) => setEditValue(e.target.value)} className="wm-input" style={{ width: 100 }} />
-                                    <select value={editCurrency} onChange={(e) => setEditCurrency(e.target.value)} className="wm-input" style={{ width: 'auto', minWidth: 76 }}>
-                                      {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
-                                    </select>
+                                    <span style={{ padding: '0 10px', height: 34, display: 'flex', alignItems: 'center', borderRadius: 8, background: 'rgba(124,58,237,.1)', color: '#a78bfa', fontSize: '.75rem', fontWeight: 700 }}>{currency}</span>
                                   </div>
                                 ) : `${row.currency} ${row.target.toLocaleString()}`}
                               </td>
@@ -460,7 +454,7 @@ export default function AccountManagerTargetsPage() {
             <div className="wm-card" style={{ padding: '22px 24px' }}>
               <div style={{ fontWeight: 700, color: '#f1f5f9', marginBottom: 18 }}>My Target &amp; Progress</div>
               <div style={{ marginBottom: 6, display: 'flex', justifyContent: 'space-between', fontSize: '.85rem' }}>
-                <span style={{ color: 'rgba(148,163,184,.6)' }}>Achieved: <strong style={{ color: '#34d399' }}>{selfCurrency} {selfAchieved.toLocaleString()}</strong> of <strong style={{ color: '#f1f5f9' }}>{selfCurrency} {selfAllocated.toLocaleString()}</strong></span>
+                <span style={{ color: 'rgba(148,163,184,.6)' }}>Achieved: <strong style={{ color: '#34d399' }}>{currency} {selfAchieved.toLocaleString()}</strong> of <strong style={{ color: '#f1f5f9' }}>{currency} {selfAllocated.toLocaleString()}</strong></span>
                 <span style={{ color: '#a78bfa', fontWeight: 700 }}>{selfProgressPct}%</span>
               </div>
               <div style={{ height: 10, background: 'rgba(255,255,255,.08)', borderRadius: 99 }}>
