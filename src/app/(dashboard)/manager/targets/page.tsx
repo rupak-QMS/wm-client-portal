@@ -96,10 +96,12 @@ export default function TargetsPage() {
   const [editAMTarget, setEditAMTarget] = useState<any>(null);
   const [amForm, setAmForm] = useState({ account_manager_id:'', month:String(NOW.getMonth()+1), year:String(NOW.getFullYear()), target_amount:'', currency:'USD' });
 
-  // Sales modal state
+  // Sales modal state — now targets a TEAM, assigned to that team's Team Leader,
+  // not an individual agent. Distributing to individual agents happens on the
+  // Team Leader's own Targets page instead.
   const [showSalesModal,  setShowSalesModal]  = useState(false);
   const [editSalesTarget, setEditSalesTarget] = useState<any>(null);
-  const [salesForm, setSalesForm] = useState({ sales_member_id:'', month:String(NOW.getMonth()+1), year:String(NOW.getFullYear()), target_revenue:'0', currency:'USD' });
+  const [salesForm, setSalesForm] = useState({ team_id:'', team_leader_id:'', month:String(NOW.getMonth()+1), year:String(NOW.getFullYear()), target_amount:'0', currency:'USD' });
 
   const prevMonth = () => { if (month===1){setMonth(12);setYear(y=>y-1);}else setMonth(m=>m-1); };
   const nextMonth = () => { if (month===12){setMonth(1);setYear(y=>y+1);}else setMonth(m=>m+1); };
@@ -188,13 +190,21 @@ export default function TargetsPage() {
     onError: (e:Error) => toast.error(e.message),
   });
 
-  // ── Sales mutations ──
+  // ── Team Leader target mutation (Manager -> Team -> its Team Leader) ──
   const salesMutation = useMutation({
     mutationFn: async (data:any) => {
-      const res=await fetch('/api/sales-targets',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
+      const res=await fetch('/api/manager/team-leader-targets',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+        team_leader_id: data.team_leader_id,
+        team_id: data.team_id,
+        month: Number(data.month),
+        year: Number(data.year),
+        target_amount: data.target_amount,
+        currency: data.currency,
+        created_by: currentUser?.id,
+      })});
       const json=await res.json(); if(!res.ok) throw new Error(json.error); return json.data;
     },
-    onSuccess: () => { qc.invalidateQueries({queryKey:['sales-targets']}); toast.success('Target saved!'); setShowSalesModal(false); setEditSalesTarget(null); },
+    onSuccess: () => { qc.invalidateQueries({queryKey:['tl-targets']}); toast.success('Target saved!'); setShowSalesModal(false); setEditSalesTarget(null); },
     onError: (e:Error) => toast.error(e.message),
   });
 
@@ -257,7 +267,7 @@ export default function TargetsPage() {
               <ChevronRight size={15}/>
             </button>
           </div>
-          <button className="wm-btn-primary" onClick={() => tab==='am' ? (setEditAMTarget(null),setAmForm({account_manager_id:'',month:String(month),year:String(year),target_amount:'',currency:'USD'}),setShowAMModal(true)) : (setEditSalesTarget(null),setSalesForm({sales_member_id:'',month:String(month),year:String(year),target_revenue:'0',currency:'USD'}),setShowSalesModal(true))}
+          <button className="wm-btn-primary" onClick={() => tab==='am' ? (setEditAMTarget(null),setAmForm({account_manager_id:'',month:String(month),year:String(year),target_amount:'',currency:'USD'}),setShowAMModal(true)) : (setEditSalesTarget(null),setSalesForm({team_id:salesTeam||'',team_leader_id:'',month:String(month),year:String(year),target_amount:'0',currency:'USD'}),setShowSalesModal(true))}
             style={{display:'flex',alignItems:'center',gap:7,height:42}}>
             <Plus size={15}/> {tab==='am'?'Add / Update Target':'Set Target'}
           </button>
@@ -520,7 +530,7 @@ export default function TargetsPage() {
           ) : (
             <div style={{overflowX:'auto'}}>
               <table className="wm-table">
-                <thead><tr><th>#</th><th>Sales Agent</th><th style={{textAlign:'right'}}>Target</th><th style={{textAlign:'right'}}>Collected</th><th style={{textAlign:'right'}}>Left</th><th style={{minWidth:160}}>Achievement</th><th style={{textAlign:'right'}}>Action</th></tr></thead>
+                <thead><tr><th>#</th><th>Team Leader</th><th style={{textAlign:'right'}}>Target</th><th style={{textAlign:'right'}}>Collected</th><th style={{textAlign:'right'}}>Left</th><th style={{minWidth:160}}>Achievement</th><th style={{textAlign:'right'}}>Action</th></tr></thead>
                 <tbody>
                   {tlRows.map((r:any,i:number)=>{
                     const isTop=salesTop&&r.id===salesTop.id&&r.achieved>0;
@@ -554,7 +564,7 @@ export default function TargetsPage() {
                           </div>
                         </td>
                         <td style={{textAlign:'right'}}>
-                          <button onClick={()=>{setEditSalesTarget(r.target??null);setSalesForm({sales_member_id:r.id,month:String(month),year:String(year),target_revenue:String(r.targetRevenue||0),currency:r.target?.currency??'USD'});setShowSalesModal(true);}}
+                          <button onClick={()=>{setEditSalesTarget(r.target??r??null);setSalesForm({team_id:r.team_id??salesTeam??'',team_leader_id:r.team_leader_id??r.id,month:String(month),year:String(year),target_amount:String(r.target||r.targetRevenue||0),currency:r.target?.currency??r.currency??'USD'});setShowSalesModal(true);}}
                             style={{width:30,height:30,borderRadius:7,border:'none',background:'rgba(255,255,255,.04)',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',color:'rgba(148,163,184,.4)',marginLeft:'auto'}}
                             onMouseEnter={e=>{const b=e.currentTarget as HTMLButtonElement;b.style.background='rgba(244,114,182,.12)';b.style.color='#f472b6';}}
                             onMouseLeave={e=>{const b=e.currentTarget as HTMLButtonElement;b.style.background='rgba(255,255,255,.04)';b.style.color='rgba(148,163,184,.4)';}}>
@@ -670,14 +680,26 @@ export default function TargetsPage() {
         <div style={{position:'fixed',inset:0,zIndex:1000,display:'flex',alignItems:'center',justifyContent:'center',padding:16}}>
           <div onClick={()=>setShowSalesModal(false)} style={{position:'absolute',inset:0,background:'rgba(0,0,0,.75)',backdropFilter:'blur(6px)'}}/>
           <div style={{position:'relative',zIndex:1,width:'100%',maxWidth:460,background:'#0e0e20',border:'1px solid rgba(124,58,237,.3)',borderRadius:18,padding:28,boxShadow:'0 0 60px rgba(124,58,237,.2)'}}>
-            <h2 style={{fontSize:'1.1rem',fontWeight:700,color:'#f1f5f9',marginBottom:4}}>{editSalesTarget?'Update Target':'Set Sales Target'}</h2>
-            <p style={{fontSize:'.82rem',color:'rgba(148,163,184,.5)',marginBottom:20}}>Set a monthly revenue target for a sales agent</p>
+            <h2 style={{fontSize:'1.1rem',fontWeight:700,color:'#f1f5f9',marginBottom:4}}>{editSalesTarget?'Update Target':'Set Team Target'}</h2>
+            <p style={{fontSize:'.82rem',color:'rgba(148,163,184,.5)',marginBottom:20}}>Set a monthly revenue target for a team — it's assigned to that team's Team Leader, who distributes it to their agents from their own Targets page.</p>
             <div style={{display:'flex',flexDirection:'column',gap:14}}>
-              <div><label style={lbl}>Sales Agent</label>
-                <select style={sel} value={salesForm.sales_member_id} onChange={e=>setSalesForm(f=>({...f,sales_member_id:e.target.value}))}>
-                  <option value="">Select agent</option>
-                  {salesMembers.map((m:any)=><option key={m.id} value={m.id}>{m.full_name}</option>)}
+              <div><label style={lbl}>Team</label>
+                <select style={sel} value={salesForm.team_id} onChange={e=>setSalesForm(f=>({...f,team_id:e.target.value,team_leader_id:''}))}>
+                  <option value="">Select team</option>
+                  {(teams as any[]).map((t:any)=><option key={t.id} value={t.id}>{t.name}</option>)}
                 </select></div>
+              <div><label style={lbl}>Team Leader</label>
+                {(() => {
+                  const teamLeadersForTeam = tlLeaders.filter((tl:any) => tl.team_id === salesForm.team_id);
+                  return (
+                    <select style={sel} value={salesForm.team_leader_id} disabled={!salesForm.team_id}
+                      onChange={e=>setSalesForm(f=>({...f,team_leader_id:e.target.value}))}>
+                      <option value="">{!salesForm.team_id ? 'Select a team first' : teamLeadersForTeam.length===0 ? 'No Team Leader assigned to this team' : 'Select Team Leader'}</option>
+                      {teamLeadersForTeam.map((tl:any)=><option key={tl.id} value={tl.id}>{tl.full_name}</option>)}
+                    </select>
+                  );
+                })()}
+              </div>
               <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
                 <div><label style={lbl}>Month</label>
                   <select style={sel} value={salesForm.month} onChange={e=>setSalesForm(f=>({...f,month:e.target.value}))}>
@@ -690,7 +712,7 @@ export default function TargetsPage() {
               </div>
               <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
                 <div><label style={lbl}>Revenue Target</label>
-                  <input style={inp} type="number" placeholder="5000" value={salesForm.target_revenue} onChange={e=>setSalesForm(f=>({...f,target_revenue:e.target.value}))}/></div>
+                  <input style={inp} type="number" placeholder="5000" value={salesForm.target_amount} onChange={e=>setSalesForm(f=>({...f,target_amount:e.target.value}))}/></div>
                 <div><label style={lbl}>Currency</label>
                   <select style={sel} value={salesForm.currency} onChange={e=>setSalesForm(f=>({...f,currency:e.target.value}))}>
                     {CURRENCIES.map(c=><option key={c} value={c}>{c}</option>)}
@@ -698,7 +720,7 @@ export default function TargetsPage() {
               </div>
               <div style={{display:'flex',gap:10,marginTop:4}}>
                 <button className="wm-btn-ghost" onClick={()=>setShowSalesModal(false)} style={{flex:1,height:40}}>Cancel</button>
-                <button className="wm-btn-primary" style={{flex:1,height:40}} disabled={salesMutation.isPending||!salesForm.sales_member_id}
+                <button className="wm-btn-primary" style={{flex:1,height:40}} disabled={salesMutation.isPending||!salesForm.team_id||!salesForm.team_leader_id}
                   onClick={()=>salesMutation.mutate(salesForm)}>Save Target</button>
               </div>
             </div>
