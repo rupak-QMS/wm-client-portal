@@ -172,6 +172,7 @@ model AccountManagerSelfTarget {
   year               Int
   allocated_amount   Float    @default(0)
   achieved_amount    Float    @default(0)
+  currency           String   @default("USD")
   created_at         DateTime @default(now())
   updated_at         DateTime @updatedAt
 
@@ -180,7 +181,6 @@ model AccountManagerSelfTarget {
   @@unique([account_manager_id, month, year])
   @@map("account_manager_self_targets")
 }
-
 model AccountManagerTeamLeaderTarget {
   id                  String   @id @default(cuid())
   account_manager_id  String
@@ -189,6 +189,7 @@ model AccountManagerTeamLeaderTarget {
   year                Int
   allocated_amount    Float    @default(0)
   achieved_amount     Float    @default(0)
+  currency            String   @default("USD")
   created_by          String
   created_at          DateTime @default(now())
   updated_at          DateTime @updatedAt
