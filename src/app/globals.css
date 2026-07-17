@@ -535,3 +535,7 @@ body {
 .light .wm-badge-green  { background: #d1fae5 !important; color: #047857 !important; border-color: #a7f3d0 !important; }
 .light .wm-badge-amber  { background: #fef3c7 !important; color: #92400e !important; border-color: #fde68a !important; }
 .light .wm-badge-purple { background: #ede9fe !important; color: #5b21b6 !important; border-color: #ddd6fe !important; }
+.light [style*="rgb(14, 14, 32)"], .light [style*="rgb(14,14,32)"] { background: #ffffff !important; }
+.light [style*="rgb(6, 6, 15)"], .light [style*="rgb(6,6,15)"] { background: #ffffff !important; }
+.light [style*="rgb(15, 15, 26)"], .light [style*="rgb(15,15,26)"] { background: #ffffff !important; }
+.light [style*="color: rgba(148, 163, 184"], .light [style*="color:rgba(148, 163, 184"] { color: #6b7280 !important; }
