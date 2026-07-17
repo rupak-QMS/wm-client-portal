@@ -10,7 +10,7 @@ import { useTheme } from 'next-themes';
 import {
   LayoutDashboard, Users, FileText, TrendingUp, MessageSquare,
   LogOut, Bell, Search, Menu, X, ChevronRight, Target,
-  CheckSquare, UserCheck, Shield, Sun, Moon,
+  CheckSquare, UserCheck, Shield, Sun, Moon, ScrollText,
 } from 'lucide-react';
 
 const NAV_MANAGER = [
@@ -24,6 +24,7 @@ const NAV_MANAGER = [
   { href: '/manager/staff',            icon: Shield,          label: 'Staff Management' },
   { href: '/manager/sales-team',       icon: Users,           label: 'Sales Team'       },
   { href: '/manager/teams',            icon: Users,           label: 'Teams'            },
+  { href: '/manager/activity-log',     icon: ScrollText,      label: 'Activity Log'     },
 ];
 
 const NAV_ACCOUNT = [
