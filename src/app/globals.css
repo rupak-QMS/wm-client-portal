@@ -741,3 +741,56 @@ body {
 .light .wm-btn-primary * { color: #ffffff !important; }
 .light .wm-btn-primary   { color: #ffffff !important; }
 .light a { color: #5b4b9e !important; }
+
+/* ══════════════════════════════════════════════════════════════
+   LIGHT THEME GAP-FILL PATCH
+   ══════════════════════════════════════════════════════════════ */
+
+.light [style*="background:rgba(255,255,255,.08)"] { background: rgba(102,126,234,.1) !important; }
+.light [style*="background: rgba(255,255,255,.08)"] { background: rgba(102,126,234,.1) !important; }
+
+.light [style*="background:#0f0f1a"]  { background: #ffffff !important; }
+.light [style*="background: #0f0f1a"] { background: #ffffff !important; }
+
+.light [style*="rgba(96,165,250,.1)"]  { background: rgba(29,78,216,.1) !important; }
+.light [style*="rgba(96,165,250,.12)"] { background: rgba(29,78,216,.12) !important; }
+.light [style*="rgba(96,165,250,.15)"] { background: rgba(29,78,216,.14) !important; }
+.light [style*="rgba(96,165,250,.18)"] { background: rgba(29,78,216,.16) !important; }
+
+.light [style*="rgba(52,211,153,.1)"]  { background: rgba(42,122,94,.1) !important; }
+.light [style*="rgba(52,211,153,.12)"] { background: rgba(42,122,94,.12) !important; }
+.light [style*="rgba(52,211,153,.15)"] { background: rgba(42,122,94,.14) !important; }
+.light [style*="rgba(52,211,153,.18)"] { background: rgba(42,122,94,.16) !important; }
+
+.light [style*="rgba(251,191,36,.1)"]  { background: rgba(146,108,0,.1) !important; }
+.light [style*="rgba(251,191,36,.12)"] { background: rgba(146,108,0,.12) !important; }
+.light [style*="rgba(251,191,36,.15)"] { background: rgba(146,108,0,.14) !important; }
+.light [style*="rgba(251,191,36,.18)"] { background: rgba(146,108,0,.16) !important; }
+
+.light [style*="rgba(248,113,113,.1)"]  { background: rgba(185,28,28,.1) !important; }
+.light [style*="rgba(248,113,113,.12)"] { background: rgba(185,28,28,.12) !important; }
+.light [style*="rgba(248,113,113,.15)"] { background: rgba(185,28,28,.14) !important; }
+.light [style*="rgba(248,113,113,.18)"] { background: rgba(185,28,28,.16) !important; }
+
+.light [style*="rgba(167,139,250,.1)"]  { background: rgba(91,75,158,.1) !important; }
+.light [style*="rgba(167,139,250,.12)"] { background: rgba(91,75,158,.12) !important; }
+.light [style*="rgba(167,139,250,.15)"] { background: rgba(91,75,158,.14) !important; }
+.light [style*="rgba(167,139,250,.18)"] { background: rgba(91,75,158,.16) !important; }
+
+.light [style*="rgba(244,114,182,.1)"]  { background: rgba(157,23,77,.1) !important; }
+.light [style*="rgba(244,114,182,.12)"] { background: rgba(157,23,77,.12) !important; }
+.light [style*="rgba(244,114,182,.15)"] { background: rgba(157,23,77,.14) !important; }
+.light [style*="rgba(244,114,182,.18)"] { background: rgba(157,23,77,.16) !important; }
+
+.light [style*="background:#60a5fa18"], .light [style*="background:#60a5fa1e"] { background: rgba(29,78,216,.14) !important; }
+.light [style*="background:#34d39918"], .light [style*="background:#34d3991e"] { background: rgba(42,122,94,.14) !important; }
+.light [style*="background:#fbbf2418"], .light [style*="background:#fbbf241e"] { background: rgba(146,108,0,.14) !important; }
+.light [style*="background:#f8717118"], .light [style*="background:#f871711e"] { background: rgba(185,28,28,.14) !important; }
+.light [style*="background:#a78bfa18"], .light [style*="background:#a78bfa1e"] { background: rgba(91,75,158,.14) !important; }
+.light [style*="background:#f472b618"], .light [style*="background:#f472b61e"] { background: rgba(157,23,77,.14) !important; }
+
+.light .wm-badge-red    { background: rgba(185,28,28,.1)  !important; color: #b91c1c !important; border-color: rgba(185,28,28,.25)  !important; }
+.light .wm-badge-blue   { background: rgba(29,78,216,.1)  !important; color: #1d4ed8 !important; border-color: rgba(29,78,216,.25)  !important; }
+.light .wm-badge-green  { background: rgba(42,122,94,.1)  !important; color: #2a7a5e !important; border-color: rgba(42,122,94,.25)  !important; }
+.light .wm-badge-amber  { background: rgba(146,108,0,.1)  !important; color: #926c00 !important; border-color: rgba(146,108,0,.25)  !important; }
+.light .wm-badge-purple { background: rgba(91,75,158,.1)  !important; color: #5b4b9e !important; border-color: rgba(91,75,158,.25)  !important; }
