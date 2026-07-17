@@ -357,8 +357,6 @@ body {
 .light [style*="color:rgba(241,245,249"]  { color: #1a1f36 !important; }
 .light [style*="color: rgba(241,245,249"] { color: #1a1f36 !important; }
 .light [style*="color:rgba(148,163,184,.3)"]  { color: #94a3b8 !important; }
-"
-'
 /* ══════════════════════════════════════════════════════════════
    CLEAN LIGHT THEME — single source of truth
    ══════════════════════════════════════════════════════════════ */
