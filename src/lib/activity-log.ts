@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
 
     const { searchParams } = new URL(req.url);
     const page = Math.max(1, Number(searchParams.get('page') ?? '1'));
-    const pageSize = Math.min(100, Number(searchParams.get('pageSize') ?? '10'));
+    const pageSize = Math.min(100, Number(searchParams.get('pageSize') ?? '30'));
     const userId = searchParams.get('userId') ?? undefined;
     const action = searchParams.get('action') ?? undefined;
     const entity = searchParams.get('entity') ?? undefined;
@@ -29,35 +29,35 @@ export async function GET(req: NextRequest) {
       if (to) where.created_at.lte = new Date(to);
     }
     if (search) {
-      // description lives inside the metadata JSON column
+      // description lives inside the metadata JSON column, not a real column
       where.metadata = { path: ['description'], string_contains: search };
     }
 
-    const [logs, total] = await Promise.all([
+    const [entries, total] = await Promise.all([
       prisma.activityLog.findMany({
         where,
-        take: pageSize,
-        skip: (page - 1) * pageSize,
         orderBy: { created_at: 'desc' },
-        include: { user: { select: { full_name: true, avatar_url: true, email: true, role: true } } },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        include: {
+          user: { select: { id: true, full_name: true, email: true, role: true } },
+        },
       }),
       prisma.activityLog.count({ where }),
     ]);
 
-    const serialized = logs.map((log) => ({
-      ...log,
-      created_at: log.created_at.toISOString(),
-    }));
-
     return NextResponse.json({
-      data: serialized,
+      data: entries,
       page,
       pageSize,
       total,
       totalPages: Math.ceil(total / pageSize),
     });
-  } catch (error: any) {
-    console.error('GET /api/activity-logs error:', error);
-    return NextResponse.json({ error: error?.message ?? 'Failed to fetch logs' }, { status: 500 });
+  } catch (err: any) {
+    console.error('GET /api/activity-log error:', err);
+    return NextResponse.json(
+      { error: err?.message ?? 'Internal server error' },
+      { status: 500 }
+    );
   }
 }
