@@ -1,3 +1,7 @@
+'use client';
+// src/app/(dashboard)/manager/activity-log/page.tsx
+// Accessible to Manager and Admin. Audit trail of who did what, when.
+
 import { useState, useEffect, useCallback } from 'react';
 import {
   ScrollText, Search, Filter, ChevronLeft, ChevronRight, Calendar,
